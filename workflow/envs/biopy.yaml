@@ -1,0 +1,9 @@
+name: biopy
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - biopython
+  - pandas
+prefix: /Users/maxime/miniconda3/envs/biopy

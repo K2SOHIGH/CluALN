@@ -1,0 +1,386 @@
+
+
+configfile:"config/config.yaml"
+
+
+import pandas as pd
+import os
+import sys
+import logging
+import glob
+"""
+    dependencies :
+        - mmseqs
+    input [required] :
+        - fasta file 
+        - output directory path
+    input [optional] :
+        - old_fasta : previous fasta file used for clustering
+        - old_seqdb : -
+        - old_cludb : -
+        - coverage : - 
+        - clumode : - 
+        - verbose : [0..3]
+    output:
+        - res_dir/cluDB.tsv
+        - res_dir/cluDB
+        - res_dir/seqDB
+"""
+
+
+# UTILITY
+
+def parsefile(f):
+    data = {}
+    try:
+        with open(f,'r') as file_handle:
+            for line in file_handle.readlines():
+                fid,old_fa,old_seqdb,old_cludb = line.strip().split()
+                if fid not in data.keys():
+                    data[fid]={'old_fa':None,'old_seqdb':None,'old_cludb':None}
+                data[fid]['old_fa'] = old_fa
+                data[fid]['old_seqdb'] = old_seqdb
+                data[fid]['old_cludb'] = old_cludb
+        return data
+    except:
+        raise NameError("Something went wrong while processing oldDB file")
+
+
+def get_record_id(fasta):
+    l_record=[]
+    with open(fasta,"r") as f:
+        for line in f.readlines():
+            line=line.strip()
+            if line.startswith(">"):
+                r=line.split()[0].replace(">","")
+                if r not in l_record:
+                    l_record.append(r)
+    return l_record
+
+
+def get_prot_id_from_seq_id(x):
+    if re.search("_prot_",x):
+        return "_".join(x.split("_prot_")[-1].split("_")[:-1])
+    else:
+        return x
+
+
+# SNAKEFILE
+
+configfile: "config/config.yaml"
+RESOURCES = "../resources"
+SCRIPTS = 'scripts'
+CONDAENV = 'envs'
+
+
+
+FASTAS, = glob_wildcards(os.path.join(config["fasta_dir"],"{fasta}."+config["fasta_extension"]))
+OLDDB = parsefile(config["oldDB"]) if config["oldDB"] is not None else None
+res_dir = config["res_dir"]
+
+
+print(OLDDB)
+
+onsuccess:
+    print("clustering finished ...")
+
+onerror:
+    os.system("rm -rf {}".format(os.path.join(res_dir,"{fasta}","clustering","clusterDB")))
+    os.system("rm -rf {}".format(os.path.join(res_dir,"{fasta}","clustering","createdb.done")))
+
+rule cluster_target:
+    input:        
+        expand(os.path.join(res_dir,"{fasta}","clustering","tables","identity.tsv"),fasta=FASTAS,)
+
+
+rule multiple_alignment_target:
+    input:
+        os.path.join(res_dir,"{fasta}","clustering","tables","identity.tsv"),
+
+rule identity_matrix:
+    output:
+        protected(os.path.join(res_dir,"{fasta}","clustering","tables","identity.tsv")),
+        protected(os.path.join(res_dir,"{fasta}","clustering","tables","similarity.tsv")),
+        protected(os.path.join(res_dir,"{fasta}","clustering","tables","summary.tsv")),
+    input:
+        msa=os.path.join(res_dir,"{fasta}","clustering","alignements","clusters.msa.aln")
+    params:
+        matrix = config["score_matrix"],
+        outdir = os.path.join(res_dir,"{fasta}","clustering","tables"),
+        distance = True,
+    script:
+        os.path.join(SCRIPTS,'get_identity_matrix.py')
+        
+def merge_cmd_constructor(wildcards):
+    msa_dir=os.path.join(res_dir,"{fasta}","clustering","clumsa")
+    if os.path.isdir(msa_dir):
+        msas = os.listdir(msa_dir)
+        cmd = ""
+        for i in msas:
+            if i.endswith("fasta"):
+                cmd += "{} ".format(i)
+        return cmd
+
+
+# MSA
+
+# rule cluster_msa2msa:
+#     output:
+#         protected(os.path.join(res_dir,"{fasta}","clustering","alignements","clusters.msa.aln"))
+#     input:
+#         os.path.join(res_dir,"{fasta}","clustering","tomsa.done"),
+#     params:
+#         outdir = os.path.join(res_dir,"{fasta}","clustering","alignements"),
+#         msadir = os.path.join(res_dir,"{fasta}","clustering","clumsa"),    
+#         cmd = merge_cmd_constructor,
+#         scripts = os.path.abspath(os.path.join(SCRIPTS,"makemergetable.rb")),
+#     conda:
+#         os.path.join(CONDAENV,"mafft.yaml")
+#     shell:
+#         'mkdir -p {params.outdir} ;'
+#         'cd {params.msadir} && '
+#         'cat {params.cmd} > input_msa && '
+#         'ruby {params.scripts} {params.cmd} > tbl_msa && '
+#         'mafft --localpair --maxiterate 100 --merge tbl_msa input_msa > ../alignements/clusters.msa.aln || mafft input_msa > ../alignements/clusters.msa.aln '#&& '
+#         #'rm input_msa ; rm tbl_msa ; cd -'
+
+rule cluster_msa2msa:
+    output:
+        os.path.join(res_dir,"{fasta}","clustering","alignements","clusters.msa.aln")
+    input:
+        msas = os.path.join(res_dir,"{fasta}","clustering","clumsa",'input_msa'),
+        tbl = os.path.join(res_dir,"{fasta}","clustering","clumsa",'tbl_msa'),
+    params:
+        outdir = os.path.join(res_dir,"{fasta}","clustering","alignements"),
+        msadir = os.path.join(res_dir,"{fasta}","clustering","clumsa"),    
+    conda:
+        os.path.join(CONDAENV,"mafft.yaml")
+    shell:
+        'mkdir -p {params.outdir} ;'
+        'mafft --localpair --maxiterate 100 --merge {input.tbl} {input.msas} > {output}'
+
+def glob_cluster_files(wildcards):
+    files = glob.glob(os.path.join(res_dir,wildcards.fasta,"clustering","clumsa",'*.fasta'))
+    return files
+        
+rule mafft_merge_input:
+    output:
+        msas = os.path.join(res_dir,"{fasta}","clustering","clumsa",'input_msa'),
+        tbl = os.path.join(res_dir,"{fasta}","clustering","clumsa",'tbl_msa'),
+    input:
+        os.path.join(res_dir,"{fasta}","clustering","tomsa.done")
+    params:
+        files = glob_cluster_files,
+    script:
+        os.path.join(SCRIPTS,'makemergeinput.py')
+
+
+rule mafft_per_clu:
+    output:
+        temp(os.path.join(res_dir,"{fasta}","clustering","tomsa.done")),
+    input:
+        os.path.join(res_dir,"{fasta}","clustering","clufastas","tofastaa.done"),
+    params:
+        fastadir = os.path.join(res_dir,"{fasta}","clustering","clufastas"), 
+        msadir = temp(os.path.join(res_dir,"{fasta}","clustering","clumsa")),
+    conda:
+        os.path.join(CONDAENV,"mafft.yaml")
+    shell:
+        "mkdir -p {params.fastadir} ; "
+        "mkdir -p {params.msadir} ; "
+        "for i in $(ls {params.fastadir}); do "
+        "mafft {params.fastadir}/$i > {params.msadir}/$i ; done && touch {output}"
+
+
+rule cluster2fasta:
+    output:
+        temp(os.path.join(res_dir,"{fasta}","clustering","clufastas","tofastaa.done")),
+    input:
+        clu = os.path.join(res_dir,"{fasta}","clustering","tables","clusters.tsv"),
+        fa = os.path.join(res_dir,"{fasta}","{fasta}.fasta.tmp"),
+    conda:
+        os.path.join(CONDAENV,"biopy.yaml")
+    params:
+        outdir = os.path.join(res_dir,"{fasta}","clustering","clufastas"), 
+        fasta_dir = lambda wildcards,input : os.path.dirname(input.fa),           
+    script:
+        os.path.join(SCRIPTS,'clu2fasta.py')
+
+
+# CLUSTERING 
+
+
+def compare_old_new(wildcards):
+    """
+        redirect workflow depending on input data
+    """
+    old_fasta = OLDDB[wildcards.fasta]["old_fa"]  if OLDDB and wildcards.fasta in OLDDB.keys() else None
+    fasta = os.path.join(config['fasta_dir'],wildcards.fasta+"."+config["fasta_extension"])
+    print("here  :  ",old_fasta)
+    if not old_fasta:
+        #logging.info("Running basic clustering")
+        input_file = os.path.join(res_dir,"{fasta}","clustering","clustering.done")
+    else:
+        share = False
+        l_record_1 = get_record_id(old_fasta)
+        l_record_2 = get_record_id(fasta)
+        #logging.info("Old fasta file size : {} sequences".format(str(len(l_record_1))))
+        #logging.info("New fasta file size : {} sequences".format(str(len(l_record_2))))
+        #logging.info("diff : {} sequences".format(str(len(list(set(l_record_1).symmetric_difference(set(l_record_2)))))))
+    
+        for i in l_record_2:
+            if i in l_record_1:
+                share=True
+                break
+        if share:
+            #logging.info("Running clustering - update clusters")    
+            input_file = os.path.join(res_dir,"{fasta}","clustering","update.done")
+        else:
+            #logging.info("Running clustering - add sequences to clusters")
+            input_file = os.path.join(res_dir,"{fasta}","clustering","addsequence.done")
+    return input_file
+
+
+
+rule cluster2tsv:
+    output:
+        protected(os.path.join(res_dir,"{fasta}","clustering","tables","clusters.tsv")),    
+    input:
+        compare_old_new,
+    params:
+        tbldir = os.path.join(res_dir,"{fasta}","clustering","tables"),
+        tmp = os.path.join(res_dir,"{fasta}","clustering","clusterDB",'tmp'),
+        seqDB = os.path.join(res_dir,"{fasta}","clustering","clusterDB","seqDB"),        
+        cluDB = os.path.join(res_dir,"{fasta}","clustering","clusterDB","cluDB"),    
+        verbose=config["verbose"],
+    conda:
+        os.path.join(CONDAENV,"mmseqs_13.45.yaml")
+    shell:
+        "mkdir -p {params.tbldir} && "
+        "mmseqs createtsv {params.seqDB} {params.seqDB} {params.cluDB} "
+        "{output} -v {params.verbose}"
+
+rule addsequence:
+    output:
+        temp(os.path.join(res_dir,"{fasta}","clustering","addsequence.done")),
+    input:
+        os.path.join(res_dir,"{fasta}","clustering","updatedb.done"),
+    params:
+        old_seqdb = lambda wildcards: OLDDB[wildcards.fasta]["old_seqdb"] if OLDDB and wildcards.fasta in OLDDB.keys() else None,
+        old_cludb = lambda wildcards: OLDDB[wildcards.fasta]["old_cludb"] if OLDDB and wildcards.fasta in OLDDB.keys() else None,
+        newDB = os.path.join(res_dir,"{fasta}","clustering","clusterDB","newseqDB"),
+        concatDB = os.path.join(res_dir,"{fasta}","clustering","clusterDB","updated_seqDB"),
+        updated_seqDB = os.path.join(res_dir,"{fasta}","clustering","clusterDB","seqDB"),        
+        newcluDB = os.path.join(res_dir,"{fasta}","clustering","clusterDB","cluDB"),        
+        tmp = os.path.join(res_dir,"{fasta}","clustering","clusterDB",'tmp'),
+        clumode = config["clumode"],
+        coverage = config["coverage"],     
+        verbose = config["verbose"],
+    conda:
+        os.path.join(CONDAENV,"mmseqs_13.45.yaml")
+    shell:
+        #"if grep -q 'success' {input}; then "
+        "mmseqs concatdbs {params.old_seqdb} {params.newDB} {params.concatDB} -v {params.verbose}  && "
+        "mmseqs concatdbs {params.old_seqdb}_h {params.newDB}_h {params.concatDB}_h -v {params.verbose}  && "
+        "mmseqs clusterupdate {params.old_seqdb} {params.concatDB} {params.old_cludb} "
+        "{params.updated_seqDB} {params.newcluDB} {params.tmp} "
+        "--cluster-mode {params.clumode} "
+        "-c {params.coverage} "
+        "-v {params.verbose} && echo success >> {output}; "
+        #"else touch {output}; fi"
+
+
+rule update:
+    output:
+        temp(os.path.join(res_dir,"{fasta}","clustering","update.done")),
+    input:
+        os.path.join(res_dir,"{fasta}","clustering","updatedb.done"),
+    params:
+        seqDB = os.path.join(res_dir,"{fasta}","clustering",'clusterDB',"newseqDB"),
+        old_seqdb = lambda wildcards: OLDDB[wildcards.fasta]["old_seqdb"]  if OLDDB and wildcards.fasta in OLDDB.keys() else None,
+        old_cludb = lambda wildcards: OLDDB[wildcards.fasta]["old_cludb"]  if OLDDB and wildcards.fasta in OLDDB.keys() else None,
+        updated_seqDB = os.path.join(res_dir,"{fasta}","clustering","clusterDB","seqDB"),
+        cluDB = os.path.join(res_dir,"{fasta}","clustering","clusterDB","cluDB"),  
+        tmp = os.path.join(res_dir,"{fasta}","clustering","clusterDB",'tmp'),
+        clumode = config["clumode"],
+        coverage = config["coverage"],     
+        verbose= config["verbose"],
+    conda:
+        os.path.join(CONDAENV,"mmseqs_13.45.yaml")
+    shell: 
+        "mmseqs clusterupdate {params.old_seqdb} {params.seqDB} {params.old_cludb} "
+        "{params.updated_seqDB} {params.cluDB} {params.tmp} "
+        "--cluster-mode {params.clumode} "
+        "-c {params.coverage} "
+        "-v {params.verbose} && echo success > {output}; "    
+    
+rule clustering:
+    output:
+        temp(os.path.join(res_dir,"{fasta}","clustering","clustering.done")),
+        #produce <res_dir>/cluDB
+    input:
+        os.path.join(res_dir,"{fasta}","clustering","createdb.done")
+    conda:
+        os.path.join(CONDAENV,"mmseqs_13.45.yaml")   
+    params:
+        seqDB = os.path.join(res_dir,"{fasta}",'clustering',"clusterDB","seqDB"),
+        cluDB = os.path.join(res_dir,"{fasta}",'clustering',"clusterDB","cluDB"), #output
+        tmp = os.path.join(res_dir,"{fasta}","clustering","clusterDB",'tmp'),
+        clumode = config["clumode"],
+        coverage = config["coverage"],
+        covmode = config["covmode"],
+        pid = config["pid"],
+        verbose=config["verbose"]
+    shell:
+        "mmseqs cluster {params.seqDB} {params.cluDB} {params.tmp} "
+        "--cluster-mode {params.clumode} "
+        "--min-seq-id {params.pid} "
+        "--cov-mode {params.covmode} "
+        "-c {params.coverage} "
+        "-v {params.verbose}  && echo success > {output}"
+
+
+rule create_db_for_update:
+    output:
+        temp(os.path.join(res_dir,"{fasta}","clustering","updatedb.done")),
+    input:
+        os.path.join(res_dir,"{fasta}","{fasta}.fasta.tmp"),
+    params:
+        out = os.path.join(res_dir,"{fasta}","clustering","clusterDB"),
+        tmp = os.path.join(res_dir,"{fasta}","clustering","clusterDB",'tmp'),
+        verbose = config["verbose"],
+    conda:
+        os.path.join(CONDAENV,"mmseqs_13.45.yaml")  
+    shell:
+        "mkdir -p {params.tmp} && "
+        "mmseqs createdb {input} {params.out}/newseqDB -v {params.verbose} && "
+        "echo success > {output} 2> {output}"
+
+rule create_db:
+    output:
+        temp(os.path.join(res_dir,"{fasta}","clustering","createdb.done")),
+    input:
+       os.path.join(res_dir,"{fasta}","{fasta}.fasta.tmp")
+    params:
+        out = os.path.join(res_dir,"{fasta}","clustering","clusterDB"),
+        tmp = os.path.join(res_dir,"{fasta}","clustering","clusterDB",'tmp'),
+        verbose = config["verbose"],
+    conda:
+        os.path.join(CONDAENV,"mmseqs_13.45.yaml")     
+    shell:
+        "mkdir -p {params.tmp} && "
+        "mmseqs createdb {input[0]} {params.out}/seqDB -v {params.verbose} &&"
+        "echo success > {output} 2> {output}"
+
+
+rule gunzip_cds:
+    output:
+        temp(os.path.join(res_dir,"{fasta}","{fasta}.fasta.tmp")),
+    input:
+        lambda wildcards: os.path.join(config["fasta_dir"],"{fasta}."+config["fasta_extension"]),
+    shell:        
+        'if [[ {input} == *.gz ]] ; then '
+        'gunzip -c {input} | sed "s/|/_/g" > {output} ; '
+        'else '
+        'cat {input} | sed "s/|/_/g" > {output} ; '
+        'fi '
