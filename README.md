@@ -3,24 +3,30 @@
 Use mmseqs2 for sequence clustering. Then, each cluster is aligned using mafft and finaly MSAs are merged with mafft-merge utility. 
 
 
-dependencies :
+# DEPENDENCIES :
     - mmseqs
     - mafft
     - biopython
     
-input [required] :
-    - fasta file 
-    - output directory path
+# INPUT :
+    - directory wuth one or more fasta file
     
-input [optional] :
-    - old_fasta : previous fasta file used for clustering
-    - old_seqdb : -
-    - old_cludb : -
+# PARAMS :
+    - \*oldDB : tsv file with : <new fasta id> \t <path to old fasta>  \t <path to old seqDB> \t <path to old cluDb>\n
     - coverage : - 
     - clumode : - 
     - verbose : [0..3]
-output:
-    -res_dir/clustering/tables/clusters.tsv 
-    -res_dir/clustering/tables/identity.tsv 
-    -res_dir/clustering/alignements/clusters.msa.aln
+# OUTPUT:
+    -res_dir/<fasta_name>/clustering/tables/clusters.tsv 
+    -res_dir/<fasta_name>/clustering/tables/identity.tsv 
+    -res_dir/<fasta_name>/clustering/alignements/clusters.msa.aln
     
+
+# USAGE :
+    - edit config file or overwrite default value with --config key=value
+    
+`snakemake --use-conda -j4 -n`
+    
+    
+\*OLDDB :
+    old fasta file will be compared to the new one. If both share some sequences then update clustering will be performed else new sequences will be added to existing clustering.
