@@ -1,4 +1,4 @@
-# SnakeClustering
+# ClusteringModule
 
 Use mmseqs2 for sequence clustering. Then, each cluster is aligned using mafft and finaly MSAs are merged with mafft-merge utility. 
 
