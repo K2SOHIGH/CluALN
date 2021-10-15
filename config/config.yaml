@@ -1,9 +1,9 @@
-fasta_dir: 'results/fastas'
-fasta_extension: 'fasta'
-res_dir: 'results'
+input_file: 'test/cds.yaml'
+res_dir: 'test/results'
 coverage: 0.80
 covmode: 0
 clumode: 1
 pid : 0
-oldDB: null # <filename> <new fasta id> \t <path to old fasta>  \t <path to old seqDB> \t <path to old cluDb>\n
+oldDB: null # file : <new fasta id> \t <path to old fasta>  \t <path to old seqDB> \t <path to old cluDb>\n
 verbose: 1
+log: null
