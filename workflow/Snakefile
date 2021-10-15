@@ -8,7 +8,6 @@ import os
 import yaml
 import sys
 import logging
-# import glob
 
 
 """
@@ -385,4 +384,4 @@ if FASTAS:
             'cat {input} | sed "s/|/_/g" > {output} ; '
             'fi '
 else:
-    local_logger("Workflow input not defined ... nothing to be done - please update set up input in config file or from commandline")
+    local_logger.warning("Workflow input not defined ... nothing to be done - please update set up input in config file or from commandline")
