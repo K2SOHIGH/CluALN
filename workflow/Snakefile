@@ -8,7 +8,7 @@ import os
 import yaml
 import sys
 import logging
-
+import glob
 
 """
     dependencies :
@@ -102,6 +102,10 @@ def parse_oldDB(oldDB):
 
 FASTAS = input_from_yaml(config["input_file"])
 OLDDB = parse_oldDB(config["oldDB"]) if config["oldDB"] is not None else None
+TARGET = os.path.join(config['res_dir'],'clustering','clustering_w_msa.done') if config['per_clu_msa'] else \
+        os.path.join(config['res_dir'],'clustering','clustering.done')
+
+
 
 if FASTAS:
     onsuccess:
@@ -110,7 +114,13 @@ if FASTAS:
         os.system("rm -rf {}".format(os.path.join(config["res_dir"],"clustering","{fasta}","clusterDB")))
         os.system("rm -rf {}".format(os.path.join(config["res_dir"],"clustering","{fasta}","createdb.done")))
 
+    rule all:
+        input:
+            TARGET,
+    
     rule cluster_target:
+        output:
+            touch(temp(os.path.join(config['res_dir'],'clustering','clustering_w_msa.done')))
         input:        
             expand(os.path.join(config["res_dir"],"clustering","{fasta}","tables","identity.tsv"),fasta=FASTAS,)
 
@@ -240,6 +250,11 @@ if FASTAS:
         return input_file
 
 
+    rule clustering_target:
+        output:
+            touch(temp(os.path.join(config['res_dir'],'clustering','clustering.done')))
+        input:
+            expand(os.path.join(config["res_dir"],"clustering","{fasta}","tables","clusters.tsv"),fasta=FASTAS,)    
 
     rule cluster2tsv:
         output:
@@ -261,7 +276,7 @@ if FASTAS:
 
     rule addsequence:
         output:
-            temp(os.path.join(config["res_dir"],"clustering","{fasta}","addsequence.done")),
+            os.path.join(config["res_dir"],"clustering","{fasta}","addsequence.done"),
         input:
             os.path.join(config["res_dir"],"clustering","{fasta}","updatedb.done"),
         params:
@@ -291,7 +306,7 @@ if FASTAS:
 
     rule update:
         output:
-            temp(os.path.join(config["res_dir"],"clustering","{fasta}","update.done")),
+            os.path.join(config["res_dir"],"clustering","{fasta}","update.done"),
         input:
             os.path.join(config["res_dir"],"clustering","{fasta}","updatedb.done"),
         params:
@@ -315,7 +330,7 @@ if FASTAS:
         
     rule clustering:
         output:
-            temp(os.path.join(config["res_dir"],"clustering","{fasta}","clustering.done")),
+            os.path.join(config["res_dir"],"clustering","{fasta}","clustering.done"),
             #produce <config["res_dir"]>/cluDB
         input:
             os.path.join(config["res_dir"],"clustering","{fasta}","createdb.done")
