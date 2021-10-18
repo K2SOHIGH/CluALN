@@ -230,7 +230,7 @@ if FASTAS:
         fasta = FASTAS[wildcards.fasta]
         
         if not old_fasta:
-            local_logger.info("Basic clustering will be performed for {}".format(fasta))
+            # local_logger.info("Basic clustering will be performed for {}".format(fasta))
             input_file = os.path.join(config["res_dir"],"clustering","{fasta}","clustering.done")
         else:
             share = False
@@ -242,10 +242,10 @@ if FASTAS:
                     share=True
                     break
             if share:
-                local_logger.info("Update clustering workflow will be performed for {}".format(fasta))
+                # local_logger.info("Update clustering workflow will be performed for {}".format(fasta))
                 input_file = os.path.join(config["res_dir"],"clustering","{fasta}","update.done")
             else:
-                local_logger.info("Add-only clustering workflow will be performed for {}".format(fasta))
+                # local_logger.info("Add-only clustering workflow will be performed for {}".format(fasta))
                 input_file = os.path.join(config["res_dir"],"clustering","{fasta}","addsequence.done")
         return input_file
 
