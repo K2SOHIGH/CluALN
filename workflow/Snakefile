@@ -1,6 +1,8 @@
-
-
-configfile:"config/config.yaml"
+# try:
+#     configfile:"config/config.yaml"
+# except FileNotFoundError:
+#     print('config file not found')
+#     exit()
 
 
 import pandas as pd
@@ -155,8 +157,6 @@ if FASTAS:
 
 
     # MSA
-
-
     rule cluster_msa2msa:
         output:
             os.path.join(config["res_dir"],"clustering","{fasta}","alignements","clusters.msa.aln")
@@ -222,6 +222,40 @@ if FASTAS:
 
     # CLUSTERING
 
+    rule clustering_target:
+        output:
+            touch(temp(os.path.join(config['res_dir'],'clustering','clustering.done')))
+        input:
+            expand(os.path.join(config["res_dir"],"clustering","{fasta}","tables","clusters.tsv"),fasta=FASTAS,),
+            expand(os.path.join(config["res_dir"],"clustering","{fasta}","tables","consensus_length.tsv"),fasta=FASTAS,),
+
+
+    rule get_consensus_length:
+        output:
+            os.path.join(config["res_dir"],"clustering","{fasta}","tables","consensus_length.tsv")
+        input:
+            os.path.join(config["res_dir"],"clustering","{fasta}","profilDB","consensus.fa"),
+        conda:
+            os.path.join("envs","biopy.yaml")
+        script:
+            os.path.join('scripts','get_length.py')
+
+    rule profiles2consensus:
+        output:
+            fasta = temp(os.path.join(config["res_dir"],"clustering","{fasta}","profilDB","consensus.fa"))
+        input:
+            os.path.join(config["res_dir"],"clustering","{fasta}","profilDB","clu2profile.done")
+        params:
+            consensusDB = os.path.join(config["res_dir"],"clustering","{fasta}","profilDB","consensusDB"),
+            proDB = os.path.join(config["res_dir"],"clustering","{fasta}","profilDB","proDB"),
+            verbose = config["verbose"],
+        conda:
+            os.path.join("envs","mmseqs_13.45.yaml")
+        shell:
+            "mmseqs profile2consensus {params.proDB} {params.consensusDB} -v {params.verbose}  && "
+            "mmseqs convert2fasta {params.consensusDB} {output.fasta} -v {params.verbose}"
+
+
     def compare_old_new(wildcards):
         """
             redirect workflow depending on input data
@@ -250,11 +284,22 @@ if FASTAS:
         return input_file
 
 
-    rule clustering_target:
+    rule cluster2profiles: 
         output:
-            touch(temp(os.path.join(config['res_dir'],'clustering','clustering.done')))
+            os.path.join(config["res_dir"],"clustering","{fasta}","profilDB","clu2profile.done"),
         input:
-            expand(os.path.join(config["res_dir"],"clustering","{fasta}","tables","clusters.tsv"),fasta=FASTAS,)    
+            os.path.join(config["res_dir"],"clustering","{fasta}","tables","clusters.tsv"),
+        params:
+            outdir = os.path.join(config["res_dir"],"clustering","{fasta}","profilDB"),
+            seqDB = os.path.join(config["res_dir"],"clustering","{fasta}","clusterDB","seqDB"),        
+            cluDB = os.path.join(config["res_dir"],"clustering","{fasta}","clusterDB","cluDB"),   
+            verbose = config["verbose"],
+        conda:
+            os.path.join("envs","mmseqs_13.45.yaml")
+        shell:
+            "mkdir -p {params.outdir} && "
+            "mmseqs result2profile {params.seqDB} {params.seqDB} {params.cluDB} {params.outdir}/proDB -v {params.verbose} && touch {output}  "
+
 
     rule cluster2tsv:
         output:
@@ -273,6 +318,7 @@ if FASTAS:
             "mkdir -p {params.tbldir} && "
             "mmseqs createtsv {params.seqDB} {params.seqDB} {params.cluDB} "
             "{output} -v {params.verbose}"
+
 
     rule addsequence:
         output:
