@@ -296,9 +296,11 @@ if FASTAS:
             verbose = config["verbose"],
         conda:
             os.path.join("envs","mmseqs_13.45.yaml")
+        log:
+            os.path.join(config['res_dir'],'logs','cluster2profile_{fasta}.log')
         shell:
             "mkdir -p {params.outdir} && "
-            "mmseqs result2profile {params.seqDB} {params.seqDB} {params.cluDB} {params.outdir}/proDB -v {params.verbose} && touch {output}  "
+            "mmseqs result2profile {params.seqDB} {params.seqDB} {params.cluDB} {params.outdir}/proDB -v {params.verbose} &> {log} && touch {output}  "
 
 
     rule cluster2tsv:
