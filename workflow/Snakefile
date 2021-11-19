@@ -102,7 +102,7 @@ def parse_oldDB(oldDB):
 
 
 
-FASTAS = input_from_yaml(config["input_file"])
+/bin/bash: q : commande introuvable
 OLDDB = parse_oldDB(config["oldDB"]) if config["oldDB"] is not None else None
 TARGET = os.path.join(config['res_dir'],'clustering','clustering_w_msa.done') if config['per_clu_msa'] else \
         os.path.join(config['res_dir'],'clustering','clustering.done')

@@ -1,4 +1,4 @@
-input_file: 'test/cds.yaml'
+clu_input_file: 'test/cds.yaml'
 res_dir: 'test/results'
 coverage: 0.80
 covmode: 0
