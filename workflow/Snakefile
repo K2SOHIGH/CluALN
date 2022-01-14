@@ -169,8 +169,12 @@ if FASTAS:
         conda:
             os.path.join("envs","mafft.yaml")
         shell:
-            'mkdir -p {params.outdir} ;'
-            'mafft --localpair --maxiterate 100 --merge {input.tbl} {input.msas} > {output}'
+            'mkdir -p {params.outdir} ; '
+            'if [[ $(cat {input.tbl} | grep -c "#") == 1 ]] ; then '
+            '   cat {input.msas} > {output};'
+            'else '
+            '   mafft --localpair --maxiterate 100 --merge {input.tbl} {input.msas} > {output};'
+            'fi'
 
     def glob_cluster_files(wildcards):
         files = glob.glob(os.path.join(config["res_dir"],"clustering",wildcards.fasta,"clumsa",'*.fasta'))
@@ -442,9 +446,9 @@ if FASTAS:
             lambda wildcards: FASTAS[wildcards.fasta],
         shell:        
             'if [[ {input} == *.gz ]] ; then '
-            'gunzip -c {input} | sed "s/|/_/g" > {output} ; '
+            'gunzip -c {input} > {output} ; '
             'else '
-            'cat {input} | sed "s/|/_/g" > {output} ; '
+            'cat {input} > {output} ; '
             'fi '
 else:
     local_logger.warning("Workflow input not defined ... nothing to be done - please update set up input in config file or from commandline")
