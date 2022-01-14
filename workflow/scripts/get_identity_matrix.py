@@ -386,58 +386,66 @@ if __name__ == '__main__':
     file_fasta = args.infile
     matrice = args.matrice
     outdir = args.o
-    dico_fasta = lit_fasta(file_fasta)
-    pairwise_df_flat = pd.DataFrame(pairwise_iteration(dico_fasta))
-    
-    pairwise_df_flat.columns="id1,id2,len_seq1,len_seq2,len_aln,coverage_1_2,coverage_2_1,identity_percent,gap_count".split(",")
-
-    print(pairwise_df_flat)
-    sequences = list(dico_fasta.values())
-    ide = list(dico_fasta.keys())
-    n = len(sequences)
-    l = len(sequences[0])
-
- 
-    similitude = mat_simi(matrice)[0]
-    (dico_simi, distance, li_sim) = pourcentage_similitude(n,l,sequences,ide,similitude)
-    (dico_ident, dist, li_iden) = pourcentage_identite(n,l,sequences,ide)
-
-
     if isinstance(outdir,str):
         os.makedirs(outdir,exist_ok=True)
 
+    dico_fasta = lit_fasta(file_fasta)
+    
+    if len(dico_fasta) > 1:
+        pairwise_df_flat = pd.DataFrame(pairwise_iteration(dico_fasta))
+        print(pairwise_df_flat)
+        pairwise_df_flat.columns="id1,id2,len_seq1,len_seq2,len_aln,coverage_1_2,coverage_2_1,identity_percent,gap_count".split(",")
 
-    dico_ident = parse_dict(dico_ident)
-    dico_simi = parse_dict(dico_simi)
+        print(pairwise_df_flat)
+        sequences = list(dico_fasta.values())
+        ide = list(dico_fasta.keys())
+        n = len(sequences)
+        l = len(sequences[0])
 
     
-    df = pd.DataFrame.from_dict(dico_ident,orient="index")
-    
-    if outdir is sys.stdout:
-        print("Identity : \n")
-        pd.DataFrame.from_dict(dico_ident,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
-        print("\nSimilarity : \n")
-        pd.DataFrame.from_dict(dico_simi,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
-        print("\nSummary : \n")
-        pairwise_df_flat.to_csv(outdir,sep="\t",header=True,index=False)
-    else:        
-        pd.DataFrame.from_dict(dico_ident,orient="index").to_csv(os.path.join(outdir,"identity.tsv"),sep="\t",header=True,index=True)
-        pd.DataFrame.from_dict(dico_simi,orient="index").to_csv(os.path.join(outdir,"similarity.tsv"),sep="\t",header=True,index=True)
-        pairwise_df_flat.to_csv(os.path.join(outdir,"summary.tsv"),sep="\t",header=True,index=False)
+        similitude = mat_simi(matrice)[0]
+        (dico_simi, distance, li_sim) = pourcentage_similitude(n,l,sequences,ide,similitude)
+        (dico_ident, dist, li_iden) = pourcentage_identite(n,l,sequences,ide)
 
 
-    if args.distance:
-        dico_distance_sim = parse_dict_distance(distance)
-        dico_distance_identity = parse_dict_distance(dist)
-        if outdir is sys.stdout:
-            print("Distance Identity : \n")
-            pd.DataFrame.from_dict(dico_distance_identity,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
-            print("\nDistance Similarity : \n")
-            pd.DataFrame.from_dict(dico_distance_sim,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
-        else:        
-            pd.DataFrame.from_dict(dico_distance_sim,orient="index").to_csv(os.path.join(outdir,"distance_sim.tsv"),sep="\t",header=True,index=True)
-            pd.DataFrame.from_dict(dico_distance_identity,orient="index").to_csv(os.path.join(outdir,"distance_idt.tsv"),sep="\t",header=True,index=True)
+  
+        dico_ident = parse_dict(dico_ident)
+        dico_simi = parse_dict(dico_simi)
+
         
+        df = pd.DataFrame.from_dict(dico_ident,orient="index")
+        
+        if outdir is sys.stdout:
+            print("Identity : \n")
+            pd.DataFrame.from_dict(dico_ident,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
+            print("\nSimilarity : \n")
+            pd.DataFrame.from_dict(dico_simi,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
+            print("\nSummary : \n")
+            pairwise_df_flat.to_csv(outdir,sep="\t",header=True,index=False)
+        else:        
+            pd.DataFrame.from_dict(dico_ident,orient="index").to_csv(os.path.join(outdir,"identity.tsv"),sep="\t",header=True,index=True)
+            pd.DataFrame.from_dict(dico_simi,orient="index").to_csv(os.path.join(outdir,"similarity.tsv"),sep="\t",header=True,index=True)
+            pairwise_df_flat.to_csv(os.path.join(outdir,"summary.tsv"),sep="\t",header=True,index=False)
+
+
+        if args.distance:
+            dico_distance_sim = parse_dict_distance(distance)
+            dico_distance_identity = parse_dict_distance(dist)
+            if outdir is sys.stdout:
+                print("Distance Identity : \n")
+                pd.DataFrame.from_dict(dico_distance_identity,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
+                print("\nDistance Similarity : \n")
+                pd.DataFrame.from_dict(dico_distance_sim,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
+            else:        
+                pd.DataFrame.from_dict(dico_distance_sim,orient="index").to_csv(os.path.join(outdir,"distance_sim.tsv"),sep="\t",header=True,index=True)
+                pd.DataFrame.from_dict(dico_distance_identity,orient="index").to_csv(os.path.join(outdir,"distance_idt.tsv"),sep="\t",header=True,index=True)
+    else:
+        open(os.path.join(outdir,"identity.tsv"),'w').close()
+        open(os.path.join(outdir,"similarity.tsv"),'w').close()
+        open(os.path.join(outdir,"summary.tsv"),'w').close()
+
+
+
 
     #     with open(os.path.join())
     #     for i in UPGMA(li_sim, ide):
