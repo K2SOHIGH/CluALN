@@ -4,6 +4,7 @@ import yaml
 import sys
 import logging
 import glob
+import multiprocessing
 
 """
     dependencies :
@@ -56,9 +57,7 @@ def input_from_yaml(input):
         return None
 
 
-############# small util ###############
-
-def get_record_id(fasta):
+############# small util #multiprocessing
     l_record=[]
     with open(fasta,"r") as f:
         for line in f.readlines():
@@ -163,12 +162,14 @@ rule cluster_msa2msa:
         msadir = os.path.join(config["res_dir"],"clustering","{fasta}","clumsa"),    
     conda:
         os.path.join("envs","mafft.yaml")
+    threads:
+        multiprocessing.cpu_count()
     shell:
         'mkdir -p {params.outdir} ; '
         'if [[ $(cat {input.tbl} | grep -c "#") == 1 ]] ; then '
         '   cat {input.msas} > {output};'
         'else '
-        '   mafft --localpair --maxiterate 100 --merge {input.tbl} {input.msas} > {output};'
+        '   mafft --thread {threads} --quiet --localpair --maxiterate 100 --merge {input.tbl} {input.msas} > {output};'
         'fi'
 
 def glob_cluster_files(wildcards):
@@ -197,11 +198,13 @@ rule mafft_per_clu:
         msadir = temp(os.path.join(config["res_dir"],"clustering","{fasta}","clumsa")),
     conda:
         os.path.join("envs","mafft.yaml")
+    threads:
+        multiprocessing.cpu_count()
     shell:
         "mkdir -p {params.fastadir} ; "
         "mkdir -p {params.msadir} ; "
         "for i in $(ls {params.fastadir}); do "
-        "mafft {params.fastadir}/$i > {params.msadir}/$i ; done && touch {output}"
+        "mafft --thread {threads} --quiet {params.fastadir}/$i > {params.msadir}/$i ; done && touch {output}"
 
 
 rule cluster2fasta:

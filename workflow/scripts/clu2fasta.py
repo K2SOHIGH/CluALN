@@ -97,8 +97,7 @@ if __name__ == '__main__':
                     break
             if rid is not None:
                 clu_rec.append(records[j])
-            else:
-                print("i not found ... ")
+
                 
         #clu_rec = [records[i] for i in members]
         write_fasta("cluster_"+str(cluster_id),clu_rec,args.out)

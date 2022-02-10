@@ -196,9 +196,6 @@ def pourcentage_identite(n,l,sequences,ide):
             except ZeroDivisionError:
                 distan_iden[ide[i],ide[j]] = 0
                 dico_ident[ide[i],ide[j]] = 0
-            #if dico_ident[ide[i],ide[j]] is None:
-            #if "AFY49796.1" in [ide[i],ide[j]] and "PSO93175.1" in [ide[i],ide[j]]:
-                #print(dico_ident[ide[i],ide[j]])
     list_dist=[]
     for i in range(n):
         list_dist.append([])
@@ -393,10 +390,7 @@ if __name__ == '__main__':
     
     if len(dico_fasta) > 1:
         pairwise_df_flat = pd.DataFrame(pairwise_iteration(dico_fasta))
-        print(pairwise_df_flat)
         pairwise_df_flat.columns="id1,id2,len_seq1,len_seq2,len_aln,coverage_1_2,coverage_2_1,identity_percent,gap_count".split(",")
-
-        print(pairwise_df_flat)
         sequences = list(dico_fasta.values())
         ide = list(dico_fasta.keys())
         n = len(sequences)
