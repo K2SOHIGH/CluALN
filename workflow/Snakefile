@@ -55,9 +55,6 @@ def input_from_yaml(input):
             raise FileNotFoundError(msg.format(input))
     else:        
         return None
-
-
-############# small util #multiprocessing
     l_record=[]
     with open(fasta,"r") as f:
         for line in f.readlines():
@@ -163,7 +160,7 @@ rule cluster_msa2msa:
     conda:
         os.path.join("envs","mafft.yaml")
     threads:
-        multiprocessing.cpu_count()
+        10 #multiprocessing.cpu_count()
     shell:
         'mkdir -p {params.outdir} ; '
         'if [[ $(cat {input.tbl} | grep -c "#") == 1 ]] ; then '
@@ -199,7 +196,7 @@ rule mafft_per_clu:
     conda:
         os.path.join("envs","mafft.yaml")
     threads:
-        multiprocessing.cpu_count()
+        10 # multiprocessing.cpu_count()
     shell:
         "mkdir -p {params.fastadir} ; "
         "mkdir -p {params.msadir} ; "
