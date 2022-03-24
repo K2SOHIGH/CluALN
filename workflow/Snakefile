@@ -156,7 +156,7 @@ def glob_cluster_files(wildcards):
 rule mafft_merge_input:
     output:
         msas = os.path.join(config["res_dir"],"{fasta}","clumsa",'input_msa'),
-        tbl = os.path.join(config["res_dir"],"{fasta}","clumsa",'tbl_msa'),
+        tbl = temp(os.path.join(config["res_dir"],"{fasta}","clumsa",'tbl_msa')),
     input:
         os.path.join(config["res_dir"],"{fasta}","tomsa.done")
     params:
@@ -200,7 +200,6 @@ rule cluster2fasta:
 
 
 # CLUSTERING
-
 rule clustering_target:
     output:
         touch(temp(os.path.join(config['res_dir'],'clustering.done')))
