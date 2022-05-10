@@ -81,7 +81,6 @@ if __name__ == '__main__':
 
     # get all sequence into a records dict
     records=fasta2records(args.fasta)
-    
     # sequence identifier
     records_id_l = records.keys()
     cluster_id = 1
@@ -90,16 +89,8 @@ if __name__ == '__main__':
         members = list(sdf.seq)
         clu_rec=[]
         for i in members:
-            for j in records_id_l:
-                rid=None
-                if re.search(i,j):
-                    rid = j
-                    break
-            if rid is not None:
-                clu_rec.append(records[j])
-
-                
-        #clu_rec = [records[i] for i in members]
+            if i in records:
+                clu_rec.append(records[i])
         write_fasta("cluster_"+str(cluster_id),clu_rec,args.out)
         cluster_id+=1
     if 'snakemake' in globals():
