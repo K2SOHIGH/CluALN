@@ -1,32 +1,28 @@
 # ClusteringModule
 
-Use mmseqs2 for sequence clustering. Then, each cluster is aligned using mafft and finaly MSAs are merged with mafft-merge utility. 
+Use mmseqs2 for sequence clustering. If --per-clu-msa is set, each cluster is aligned using mafft and MSAs produced are merged with mafft-merge utility. 
 
 
 # DEPENDENCIES :
-    - mmseqs
-    - mafft
-    - biopython
+    - snakemake
+    - pyyaml
+    - pandas
     
 # INPUT :
-    - directory wuth one or more fasta file
+    - directory with one or more fasta file, fast afile or yaml file with path to fasta file(s).
     
-# PARAMS :
-    - \*oldDB : tsv file with : <new fasta id> \t <path to old fasta>  \t <path to old seqDB> \t <path to old cluDb>\n
-    - coverage : - 
-    - clumode : - 
-    - verbose : [0..3]
 # OUTPUT:
     -res_dir/<fasta_name>/clustering/tables/clusters.tsv 
     -res_dir/<fasta_name>/clustering/tables/identity.tsv 
     -res_dir/<fasta_name>/clustering/alignements/clusters.msa.aln
-    
 
-# USAGE :
-    - edit config file or overwrite default value with --config key=value
-    
-`snakemake --use-conda -j4 -n`
-    
-    
-\*OLDDB :
-    old fasta file will be compared to the new one. If both share some sequences then update clustering will be performed else new sequences will be added to existing clustering.
+# INSTALLATION:
+```bash
+ git clone git@github.com:K2SOHIGH/ClusteringModule.git && cd ClusteringModule;
+ mamba create -n clualn python=3 && conda activate clualn;
+ pip3 install . ;
+```
+
+# USAGE : 
+`clualn -i path/to/fasta -o path/to/resdir --per-clu-msa`
+ 
