@@ -8,6 +8,7 @@ import multiprocessing
 from scripts import snakeutils as su
 
 
+config["oldDB"] = None
 #workdir: os.path.dirname(__file__)
 
 """
@@ -73,11 +74,11 @@ def parse_oldDB(oldDB):
     except:
         raise NameError("Something went wrong while processing oldDB file")
 
-print(config)
 
 
 TARGET = os.path.join(config['res_dir'],'clustering_w_msa.done') if config['per_clu_msa'] else \
         os.path.join(config['res_dir'],'clustering.done')
+
 if config['clu_input'] and os.path.exists(config['clu_input']):
     FASTAS = su.parse_input(config['clu_input'] , config['extension']) 
     OLDDB = parse_oldDB(config["oldDB"]) if config["oldDB"] is not None else None
@@ -86,7 +87,6 @@ else:
     OLDDB= None
 
 
-print(FASTAS)
 
 onerror:
     os.system("rm -rf {}".format(os.path.join(config["res_dir"],"{fasta}","clusterDB")))

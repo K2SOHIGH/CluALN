@@ -29,7 +29,7 @@ def input_from_yaml(input):
 
 def input_is_fasta(input,extension):
     if input:
-        print(os.getcwd())
+        
         if os.path.exists(input):
             n = os.path.basename(input).replace(extension,"")
             return {n : os.path.abspath(input)}

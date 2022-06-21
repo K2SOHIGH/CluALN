@@ -1,9 +1,21 @@
 import argparse
 import sys
 import os
+import logging
 import yaml
 
 _SNAKEFILE =  os.path.join(os.path.dirname(__file__), 'workflow/Snakefile')
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        #logging.FileHandler("clustering.log"),
+        logging.StreamHandler()
+    ]
+)
+
 
 
 
@@ -11,7 +23,7 @@ _SNAKEFILE =  os.path.join(os.path.dirname(__file__), 'workflow/Snakefile')
 
 def get_args():
     parser = argparse.ArgumentParser(
-            prog='snakeclualn',
+            prog='clualn',
             description='Cluster sequences , perform MSA per cluster and merge MSA'
         )
 
@@ -73,13 +85,13 @@ def get_args():
         help="sequence identity threshold for clustering"
     )
     
-    parser.add_argument(
-        '--olddb',
-        dest = "oldDB",
-        type = str,
-        default = None,
-        help="path to file with for each line file : <new fasta id> \t <path to old fasta>  \t <path to old seqDB> \t <path to old cluDb>\n "
-    )
+    # parser.add_argument(
+    #     '--olddb',
+    #     dest = "oldDB",
+    #     type = str,
+    #     default = None,
+    #     help="path to file with for each line file : <new fasta id> \t <path to old fasta>  \t <path to old seqDB> \t <path to old cluDb>\n "
+    # )
 
     parser.add_argument(
         '-v',
@@ -111,9 +123,23 @@ def get_args():
     return args
 
 def main():
+
+
     args = get_args()
 
+
+
+    cprefix = os.path.abspath(
+        os.path.join(
+            os.path.expanduser('~'),
+            "snakemake/clustering-module"
+        )
+    )
+    os.makedirs(cprefix,exist_ok=True)
+
     os.makedirs(args.res_dir , exist_ok= True)
+
+    logging.info("snakemake will install conda environment in %s" % cprefix)
 
 
     CONFIG = {}
@@ -129,18 +155,22 @@ def main():
                 CONFIG[arg] = getattr(args,arg) #.append(c)
 
     yaml.dump(CONFIG, open( args.res_dir + "/config.yaml" , 'w'))
-        
+    
+    
+
     cmd = """
-        snakemake --snakefile {snakefile} --use-conda --configfile {config} {snakargs}
+        snakemake --snakefile {snakefile} --use-conda --configfile {config} --conda-prefix {cp} {snakargs}
     """.format( 
-        snakefile = _SNAKEFILE , 
+        snakefile = _SNAKEFILE ,
+        cp = cprefix,  
         config = args.res_dir + "/config.yaml", 
         snakargs = SNAKARGS 
     )
     
-    print("running : " + cmd + " ... ")
+    logging.info("running : " + cmd + " ... ")
     os.system(cmd)
-
+    logging.info("clustering done.")
+    logging.info('exit')
 
 
 if __name__ == "__main__":
