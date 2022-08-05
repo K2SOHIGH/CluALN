@@ -151,7 +151,7 @@ rule cluster_msa2msa:
         'if [[ $(cat {input.tbl} | grep -c "#") == 1 ]] ; then '
         '   cat {input.msas} > {output};'
         'else '
-        '   mafft --thread {threads} --quiet --localpair --maxiterate 100 --merge {input.tbl} {input.msas} > {output};'
+        '   mafft --thread {threads} --quiet --anysymbol --localpair --maxiterate 100 --merge {input.tbl} {input.msas} > {output};'
         'fi'
 
 def glob_cluster_files(wildcards):
@@ -186,7 +186,7 @@ rule mafft_per_clu:
         "mkdir -p {params.fastadir} ; "
         "mkdir -p {params.msadir} ; "
         "for i in $(ls {params.fastadir}); do "
-        "mafft --thread {threads} --quiet {params.fastadir}/$i > {params.msadir}/$i ; done && touch {output}"
+        "mafft --thread {threads} --anysymbol --quiet {params.fastadir}/$i > {params.msadir}/$i ; done && touch {output}"
 
 
 rule cluster2fasta:
