@@ -100,7 +100,8 @@ rule cluster_target:
     output:
         touch(temp(os.path.join(config['res_dir'],'clustering_w_msa.done')))
     input:        
-        expand(os.path.join(config["res_dir"],"{fasta}","tables","identity.tsv"),fasta=FASTAS,)
+        expand(os.path.join(config["res_dir"],"{fasta}","tables","identity.tsv"),fasta=FASTAS,),
+        expand(os.path.join(config["res_dir"],"{fasta}","tables","consensus_length.tsv"),fasta=FASTAS,),
 
 
 rule multiple_alignment_target:
@@ -151,7 +152,7 @@ rule cluster_msa2msa:
         'if [[ $(cat {input.tbl} | grep -c "#") == 1 ]] ; then '
         '   cat {input.msas} > {output};'
         'else '
-        '   mafft --thread {threads} --quiet --anysymbol --localpair --maxiterate 100 --merge {input.tbl} {input.msas} > {output};'
+        '   mafft --thread {threads} --anysymbol --maxiterate 100 --merge {input.tbl} {input.msas} > {output};'
         'fi'
 
 def glob_cluster_files(wildcards):
@@ -161,7 +162,7 @@ def glob_cluster_files(wildcards):
 rule mafft_merge_input:
     output:
         msas = os.path.join(config["res_dir"],"{fasta}","clumsa",'input_msa'),
-        tbl = temp(os.path.join(config["res_dir"],"{fasta}","clumsa",'tbl_msa')),
+        tbl = os.path.join(config["res_dir"],"{fasta}","clumsa",'tbl_msa'),
     input:
         os.path.join(config["res_dir"],"{fasta}","tomsa.done")
     params:
@@ -421,7 +422,7 @@ rule gunzip_cds:
         lambda wildcards: FASTAS[wildcards.fasta],
     shell:        
         'if [[ {input} == *.gz ]] ; then '
-        'gunzip -c {input} > {output} ; '
+        'gunzip -c {input} ; '
         'else '
-        'cat {input} > {output} ; '
-        'fi '
+        'cat {input} ; '        
+        'fi > {output} '

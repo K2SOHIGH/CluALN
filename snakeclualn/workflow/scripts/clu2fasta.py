@@ -48,6 +48,24 @@ def write_fasta(rep,l_records,outfile):
             sys.stdout.write(">{}\t{}\n".format(r.id,r.description))
             sys.stdout.write("{}\n".format(str(r.seq)))
 
+def find_record(rid,records):
+    """
+        rid : mmseqs truncated identifier
+        records : fasta sequences in a dictionnary 
+    """
+    ids = list(records.keys())
+    lenmatch = 0
+    matchr = None
+    for i in ids:
+        m = re.search(rid,i)
+        if m:
+            if m.end() > lenmatch:
+                lenmatch=m.end()
+                matchr = records[i]
+    return matchr
+
+
+
 def parseargs():
     parser = argparse.ArgumentParser(
         prog='filterdomtbl.py ',
@@ -81,9 +99,12 @@ if __name__ == '__main__':
 
     # get all sequence into a records dict
     records=fasta2records(args.fasta)
+    
+    
     # sequence identifier
     records_id_l = records.keys()
     cluster_id = 1
+    
     #groupby cluster and subset fasta to cluster_fasta
     for rep, sdf in df.groupby("rep"):
         members = list(sdf.seq)
@@ -91,7 +112,10 @@ if __name__ == '__main__':
         for i in members:
             if i in records:
                 clu_rec.append(records[i])
+            else:
+                clu_rec.append(find_record(i,records))        
         write_fasta("cluster_"+str(cluster_id),clu_rec,args.out)
         cluster_id+=1
+
     if 'snakemake' in globals():
         open(os.path.join(args.out,"tofastaa.done"),'w').close()

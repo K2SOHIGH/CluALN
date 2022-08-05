@@ -33,19 +33,19 @@ if __name__ == '__main__':
     data=[]
     with open(fasta,'r') as stream:
         for r in SeqIO.parse(stream, 'fasta'):    
-            data.append((r.id,len(r.seq)))
+            data.append((r.id, len(str(r.seq)) , str(r.seq) ))
 
 
     if outfile is sys.stdout:
         for i in data:
-            print(i[0].strip(),"\t",i[1])
+            print(i[0].strip(),"\t",i[1] , i[2])
     else:
         with open(str(outfile),"w") as fout:
             for i in data:
-                if i != data[-1]:
-                    fout.write("{}\t{}\n".format(i[0].strip(),i[1]))
-                else:
-                    fout.write("{}\t{}".format(i[0].strip(),i[1]))
+                
+                fout.write("{}\t{}\t{}".format(i[0].strip(),i[1] , i[2] ))
+                # else:
+                    # fout.write("{}\t{}".format(i[0].strip(),i[1]))
 
             
             
