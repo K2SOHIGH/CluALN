@@ -47,7 +47,7 @@ def get_args():
         '-m',
         '--per-clu-msa',
         action = "store_true",
-        help = "if set, each cluster will be aligned using MAFFT and then merged"
+        help = "if set, each cluster will be aligned using MAFFT and then merged using MAFFT merge"
     )
 
     parser.add_argument(
@@ -55,7 +55,7 @@ def get_args():
         '--coverage',
         dest = "coverage",
         default=0.80,
-        help="coverage threshold for clustering"
+        help="coverage threshold for clustering [0:1] (default: 0.8)"
     )
 
     parser.add_argument(
@@ -64,7 +64,7 @@ def get_args():
         choices = [0,1,2,3],
         type = int,
         default=0,
-        help="msmeqs covmode"
+        help="mmsmeqs coverage mode (default: 0)"
     )
 
 
@@ -74,7 +74,7 @@ def get_args():
         type = int,
         choices = [0,1,2],
         default = 1,
-        help="mmseqs cluster mode"
+        help="mmseqs cluster mode (default: 1)"
     )
 
     parser.add_argument(
@@ -82,7 +82,7 @@ def get_args():
         dest = "pid",
         type = float,
         default = 0,
-        help="sequence identity threshold for clustering"
+        help="sequence identity threshold for clustering [0:1] (default: 0)"
     )
     
     # parser.add_argument(
@@ -116,7 +116,7 @@ def get_args():
         help="sequence file extension if input is a directory"
     )
 
-    parser.add_argument('--snakargs', dest='snakargs', type=str, default="-j1",
+    parser.add_argument('--snakargs', dest='snakargs', type=str, default="-j10",
             help='snakmake arguments')
     
     args = parser.parse_args()

@@ -28,8 +28,7 @@ def input_from_yaml(input):
         return None
 
 def input_is_fasta(input,extension):
-    if input:
-        
+    if input:        
         if os.path.exists(input):
             n = os.path.basename(input).replace(extension,"")
             return {n : os.path.abspath(input)}
