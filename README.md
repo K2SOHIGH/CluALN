@@ -36,12 +36,12 @@ optional arguments:
                         a fasta file
   -o RES_DIR, --output-directory RES_DIR
                         output directory
-  -m, --per-clu-msa     if set, each cluster will be aligned using MAFFT and then merged
+  -m, --per-clu-msa     if set, each cluster will be aligned using MAFFT and then merged using MAFFT merge
   -c COVERAGE, --coverage COVERAGE
-                        coverage threshold for clustering
-  --cm {0,1,2,3}        msmeqs covmode
-  --clumode {0,1,2}     mmseqs cluster mode
-  --pid PID             sequence identity threshold for clustering
+                        coverage threshold for clustering [0:1] (default: 0.8)
+  --cm {0,1,2,3}        mmsmeqs coverage mode (default: 0)
+  --clumode {0,1,2}     mmseqs cluster mode (default: 1)
+  --pid PID             sequence identity threshold for clustering [0:1] (default: 0)
   -v VERBOSE            mmseqs verbose
   --log LOG             logfile
   -e EXTENSION, --extension EXTENSION
