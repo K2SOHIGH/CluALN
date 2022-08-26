@@ -75,9 +75,12 @@ def parse_oldDB(oldDB):
         raise NameError("Something went wrong while processing oldDB file")
 
 
-
-TARGET = os.path.join(config['res_dir'],'clustering_w_msa.done') if config['per_clu_msa'] else \
-        os.path.join(config['res_dir'],'clustering.done')
+TARGET = os.path.join(config['res_dir'],'clustering.done')
+if config ["per_clu_msa"]:
+    TARGET = os.path.join(config["res_dir"],"{fasta}","tomsa.done")
+if config ["merge"]:
+    TARGET = os.path.join(config['res_dir'],'clustering_w_msa.done')      
+    
 
 if config['clu_input'] and os.path.exists(config['clu_input']):
     FASTAS = su.parse_input(config['clu_input'] , config['extension']) 
