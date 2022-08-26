@@ -16,11 +16,6 @@ logging.basicConfig(
     ]
 )
 
-
-
-
-
-
 def get_args():
     parser = argparse.ArgumentParser(
             prog='clualn',
@@ -47,7 +42,14 @@ def get_args():
         '-m',
         '--per-clu-msa',
         action = "store_true",
-        help = "if set, each cluster will be aligned using MAFFT and then merged using MAFFT merge"
+        help = "if set, each cluster will be aligned using MAFFT"
+    )
+    
+    parser.add_argument(
+        '-m',
+        '--merge',
+        action = "store_true",
+        help = "if set, cluster MSA will be merged [warning ... might be slow]"
     )
 
     parser.add_argument(
