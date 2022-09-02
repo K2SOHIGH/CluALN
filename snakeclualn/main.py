@@ -39,7 +39,6 @@ def get_args():
     )
     
     parser.add_argument(
-        '-m',
         '--per-clu-msa',
         action = "store_true",
         help = "if set, each cluster will be aligned using MAFFT"
