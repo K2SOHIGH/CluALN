@@ -30,28 +30,6 @@ config["oldDB"] = None
         - config["res_dir"]/seqDB
 """
 
-# def input_from_yaml(input):  
-#     if input:
-#         if os.path.exists(input):
-#             conff = open(input)
-#             datas = yaml.load(conff,Loader=yaml.FullLoader)    
-#             return datas
-#         else:
-#             msg="""WORKFLOW INPUT : {} not found
-#             """
-#             raise FileNotFoundError(msg.format(input))
-#     else:        
-#         return None
-#     l_record=[]
-#     with open(fasta,"r") as f:
-#         for line in f.readlines():
-#             line=line.strip()
-#             if line.startswith(">"):
-#                 r=line.split()[0].replace(">","")
-#                 if r not in l_record:
-#                     l_record.append(r)
-#     return l_record
-
 
 def get_prot_id_from_seq_id(x):
     if re.search("_prot_",x):
@@ -74,14 +52,6 @@ def parse_oldDB(oldDB):
     except:
         raise NameError("Something went wrong while processing oldDB file")
 
-
-TARGET = os.path.join(config['res_dir'],'clustering.done')
-if config ["per_clu_msa"]:
-    TARGET = os.path.join(config["res_dir"],"{fasta}","tomsa.done")
-if config ["merge"]:
-    TARGET = os.path.join(config['res_dir'],'clustering_w_msa.done')      
-    
-
 if config['clu_input'] and os.path.exists(config['clu_input']):
     FASTAS = su.parse_input(config['clu_input'] , config['extension']) 
     OLDDB = parse_oldDB(config["oldDB"]) if config["oldDB"] is not None else None
@@ -90,6 +60,12 @@ else:
     OLDDB= None
 
 
+TARGET = os.path.join(config['res_dir'],'clustering.done')
+if config ["per_clu_msa"]:
+    TARGET = os.path.join(config['res_dir'],'clustering_w_msa.done')      
+if config ["merge"]:    
+    TARGET = expand(os.path.join(config["res_dir"],"{fasta}","tomsa.done"),fasta=FASTAS,)
+    
 
 onerror:
     os.system("rm -rf {}".format(os.path.join(config["res_dir"],"{fasta}","clusterDB")))
@@ -190,7 +166,7 @@ rule mafft_per_clu:
         "mkdir -p {params.fastadir} ; "
         "mkdir -p {params.msadir} ; "
         "for i in $(ls {params.fastadir}); do "
-        "mafft --thread {threads} --anysymbol --quiet {params.fastadir}/$i > {params.msadir}/$i ; done && touch {output}"
+        "   mafft --thread {threads} --anysymbol --quiet {params.fastadir}/$i > {params.msadir}/$i ; done && touch {output}"
 
 
 rule cluster2fasta:
