@@ -51,12 +51,15 @@ if config ["merge"]:
         os.path.join(config['res_dir'],'per_clu_msa.done'),
     ]
     
-
-
-
 rule all:
+    output:
+        os.path.join(config['res_dir'],'summary.txt')
     input:  
         TARGET,
+    params:
+        resdir = config["res_dir"],
+    script:
+        os.path.join('scripts','summary.py')
 
 rule merge_target:
     output:
