@@ -36,15 +36,19 @@ def fasta2records(fasta):
         
     #return { re.sub("\|.*", "" ,k.replace("lcl|","")) : v  for k,v in records.items()}
 
-def write_fasta(rep,l_records,outfile):
-    if outfile is not sys.stdout:
-        os.makedirs(outfile,exist_ok=True)
-        outfile = os.path.join(outfile,rep+".fasta")
+def write_fasta( cluid , records, outdir ):
+    """
+        write cluster fasta file into 
+    """
+    if outdir is not sys.stdout:
+        cludir = os.path.join(outdir,cluid,"fastas")
+        os.makedirs(cludir,exist_ok=True)
+        outfile = os.path.join(cludir,"seq.fasta")
         with open(str(outfile), "w") as handle:
-            SeqIO.write(l_records, handle, "fasta")
+            SeqIO.write(records, handle, "fasta")
     else:
-        sys.stdout.write("Cluster rep : {}\n".format(rep))          
-        for r in l_records:  
+        sys.stdout.write("Cluster rep : {}\n".format(cluid))          
+        for r in records:  
             sys.stdout.write(">{}\t{}\n".format(r.id,r.description))
             sys.stdout.write("{}\n".format(str(r.seq)))
 
@@ -80,9 +84,10 @@ def parseargs():
     return args
 
 def parsesnake():
-    args = argparse.Namespace(clu=str(snakemake.input.clu),
+    args = argparse.Namespace(
+        clu=str(snakemake.input.clu),
         fasta = str(snakemake.input.fa),
-        out = str(snakemake.params.outdir)
+        out = str(snakemake.output)
         )
     return args
 
@@ -114,7 +119,7 @@ if __name__ == '__main__':
                 clu_rec.append(records[i])
             else:
                 clu_rec.append(find_record(i,records))        
-        write_fasta("cluster_"+str(cluster_id),clu_rec,args.out)
+        write_fasta("cluster_"+str(cluster_id), clu_rec , args.out)
         cluster_id+=1
 
     if 'snakemake' in globals():

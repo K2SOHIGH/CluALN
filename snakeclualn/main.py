@@ -74,8 +74,8 @@ def get_args():
         dest = "clumode",
         type = int,
         choices = [0,1,2],
-        default = 1,
-        help="mmseqs cluster mode (default: 1)"
+        default = 0,
+        help="mmseqs cluster mode (default: 0)"
     )
 
     parser.add_argument(
@@ -85,21 +85,14 @@ def get_args():
         default = 0,
         help="sequence identity threshold for clustering [0:1] (default: 0)"
     )
-    
-    # parser.add_argument(
-    #     '--olddb',
-    #     dest = "oldDB",
-    #     type = str,
-    #     default = None,
-    #     help="path to file with for each line file : <new fasta id> \t <path to old fasta>  \t <path to old seqDB> \t <path to old cluDb>\n "
-    # )
 
     parser.add_argument(
         '-v',
         dest = "verbose",
         type = int,
         default = 1,
-        help="mmseqs verbose"
+        choices = [0,1,2,3],
+        help="mmseqs verbose [0 -> nothing, 1 -> +errors, 2 -> +warnings, 3 -> +info] "
     )
 
     parser.add_argument(

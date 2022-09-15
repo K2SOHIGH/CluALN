@@ -2,7 +2,7 @@ import os
 import sys
 import re
 
-files = snakemake.params.files
+files = snakemake.input
 msas = snakemake.output.msas
 tbl = snakemake.output.tbl
 
@@ -11,8 +11,10 @@ tbl = snakemake.output.tbl
 with open(str(msas),'w') as output_handle:
     tbl_dict = {}
     nseq=0
+    nfile = 0
     for i in files:
-        filename = os.path.basename(i)
+        filename = os.path.basename(i) + "_" + str(nfile)
+        nfile += 1 
         lseq = " "
         with open(i,'r') as file_handle:
             for l in file_handle.readlines():
