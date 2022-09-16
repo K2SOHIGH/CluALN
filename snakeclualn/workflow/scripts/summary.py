@@ -63,7 +63,7 @@ with open(outfile,'w') as streamout:
     for i,j in datas.items():
         streamout.write("%s : %i\n" % (i,j))
 
-    if per_clu_stats_df:
+    if per_clu_stats_df is not None:
         streamout.write("###############################\n")
         for i,j in per_clu_stats_df.T.to_dict().items():        
             for k,v in j.items():
