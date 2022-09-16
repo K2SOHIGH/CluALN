@@ -26,12 +26,6 @@ from scripts import snakeutils as su
         - config["res_dir"]/seqDB
 """
 
-
-
-
-if config['clu_input'] and os.path.exists(config['clu_input']):
-    FASTA = config['clu_input'] #su.parse_input(config['clu_input'] , config['extension']) 
-
 TARGET = [os.path.join(config['res_dir'],'clustering','clu.done')]
 if config ["per_clu_msa"]:
     """
@@ -330,7 +324,7 @@ rule gunzip_cds:
     output:
         os.path.join(config["res_dir"],"clustering","fastas","input.fasta"),
     input:
-        FASTA,
+        config['clu_input'] ,
     shell:        
         'if [[ {input} == *.gz ]] ; then '
         'gunzip -c {input} ; '

@@ -59,13 +59,14 @@ datas
 
 
 outfile = str(snakemake.output)
-for i,j in datas.items():
-    outfile.write("%s : %i\n" % (i,j))
+with open(outfile,'w') as streamout:
+    for i,j in datas.items():
+        streamout.write("%s : %i\n" % (i,j))
 
-if per_clu_stats_df:
-    outfile.write("###############################\n")
-    for i,j in per_clu_stats_df.T.to_dict().items():        
-        for k,v in j.items():
-            outfile.write("@cluster_%i - %s : %s\n" % (i,k,str(v)))
+    if per_clu_stats_df:
+        streamout.write("###############################\n")
+        for i,j in per_clu_stats_df.T.to_dict().items():        
+            for k,v in j.items():
+                streamout.write("@cluster_%i - %s : %s\n" % (i,k,str(v)))
 
 
