@@ -118,6 +118,9 @@ def match_missmatch_count(dico_fasta):
     """
 
 def iter_seq(seq1,seq2):
+    """
+        match , identity match and gap counts
+    """
     cpt=0
     gap=0
     ident=0

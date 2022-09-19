@@ -5,7 +5,7 @@ import pandas as pd
 def clusummary(df):
     return {
         "cluster":len(list(df[df[0].duplicated()][0].unique())),
-        "singletons":len(list(df[~df[0].duplicated()][0].unique())),
+        "singletons":len(set(df[0])) - len(list(df[df[0].duplicated()][0].unique())),
         "total_seq":len(list(df[0])),
     }
 
