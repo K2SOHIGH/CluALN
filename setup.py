@@ -14,7 +14,7 @@ setup(
     install_requires=[
         "snakemake",
         "pyyaml==6.0",
-        "pandas"ls
+        "pandas"
         
     ],    
     include_package_data=True,
