@@ -3,8 +3,12 @@ import sys
 import pandas as pd
 
 def clusummary(df):
+    t = df.groupby(0).count()
+    print((t[t[1]>=10].shape[0] * 100) / df.shape[0])
     return {
         "cluster":len(list(df[df[0].duplicated()][0].unique())),
+        "cluster (>10)": t[t[1]>=10].shape[0], 
+        "input_in_cluster (%)": (t[t[1]>=10].shape[0] * 100) / df.shape[0], 
         "singletons":len(set(df[0])) - len(list(df[df[0].duplicated()][0].unique())),
         "total_seq":len(list(df[0])),
     }
@@ -61,12 +65,12 @@ datas
 outfile = str(snakemake.output)
 with open(outfile,'w') as streamout:
     for i,j in datas.items():
-        streamout.write("%s : %i\n" % (i,j))
+        streamout.write("{} : {}\n".format(i,j))
 
     if per_clu_stats_df is not None:
         streamout.write("###############################\n")
         for i,j in per_clu_stats_df.T.to_dict().items():        
             for k,v in j.items():
-                streamout.write("@cluster_%i - %s : %s\n" % (i,k,str(v)))
+                streamout.write("@cluster_{} - {} : {}\n".format(i,k,v))
 
 

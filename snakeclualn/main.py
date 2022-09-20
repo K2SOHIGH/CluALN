@@ -153,7 +153,7 @@ def main():
     
 
     cmd = """
-        snakemake --snakefile {snakefile} --use-conda --configfile {config} --conda-prefix {cp} {snakargs}
+        snakemake --snakefile {snakefile} --rerun-triggers mtime --use-conda --configfile {config} --conda-prefix {cp} {snakargs}
     """.format( 
         snakefile = _SNAKEFILE ,
         cp = cprefix,  
