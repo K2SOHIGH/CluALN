@@ -104,8 +104,6 @@ def get_input_idt(wildcards):
     return os.path.join(config["res_dir"],"{fasta}","fastas","representatives.aln.fasta")
 
 
-
-
 rule identity_matrix:
     output:
         os.path.join(config["res_dir"],"{target}","tables","identity.tsv"),
@@ -122,8 +120,6 @@ rule identity_matrix:
 
 
 # MSA
-
-
 rule cluster_msa2msa:
     output:
         os.path.join(config["res_dir"],"merged","alignements","msa.aln")
@@ -144,16 +140,12 @@ rule cluster_msa2msa:
         '   mafft --thread {threads} --anysymbol --maxiterate 100 --merge {input.tbl} {input.msas} > {output};'
         'fi'
 
-
-
 def aggregate_cluster(wildcards):
     import glob
     checkpoint_output = checkpoints.cluster2fasta.get(**wildcards).output[0]
     clusters = [os.path.basename(i) for i in glob.glob(os.path.join(checkpoint_output, "cluster_*" ))]
     return expand(os.path.join(config["res_dir"],"per_cluster","{cluster}","alignements","msa.aln"),
         cluster = clusters)
-
-
 
 rule mafft_merge_input:
     output:
@@ -163,8 +155,6 @@ rule mafft_merge_input:
         aggregate_cluster,
     script:
         os.path.join("scripts",'makemergeinput.py')
-
-
 
 rule mafft:
     output:
@@ -178,9 +168,6 @@ rule mafft:
     shell:
         "mafft --thread {threads} --anysymbol --quiet {input} > {output}"
 
-
-
-
 checkpoint cluster2fasta:
     output:
         directory(os.path.join(config["res_dir"],"per_cluster")),
@@ -191,7 +178,6 @@ checkpoint cluster2fasta:
         os.path.join("envs","biopy.yaml")
     script:
         os.path.join("scripts",'clu2fasta.py')
-
 
 # CLUSTERING
 rule get_consensus_length:
@@ -233,11 +219,9 @@ rule cluster2profiles:
         verbose = config["verbose"],
     conda:
         os.path.join("envs","mmseqs_13.45.yaml")
-    log:
-        os.path.join(config['res_dir'],'logs','cluster2profile_clustering.log')
     shell:
         "mkdir -p {params.outdir} && "
-        "mmseqs result2profile {params.seqDB} {params.seqDB} {params.cluDB} {params.outdir}/proDB -v {params.verbose} &> {log} && touch {output}  "
+        "mmseqs result2profile {params.seqDB} {params.seqDB} {params.cluDB} {params.outdir}/proDB -v {params.verbose} && touch {output}  "
 
 
 rule representative2fasta:

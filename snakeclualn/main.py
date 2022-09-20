@@ -5,7 +5,7 @@ import logging
 import yaml
 
 from snakeclualn.workflow.scripts import log
-logger = log.setlogger()
+logger = log.setlogger("clualn")
 
 _SNAKEFILE =  os.path.join(os.path.dirname(__file__), 'workflow/Snakefile')
 
@@ -120,12 +120,8 @@ def get_args():
     return args
 
 def main():
-
-
     args = get_args()
-
-
-
+    
     cprefix = os.path.abspath(
         os.path.join(
             os.path.expanduser('~'),
@@ -135,8 +131,22 @@ def main():
     os.makedirs(cprefix,exist_ok=True)
 
     os.makedirs(args.res_dir , exist_ok= True)
+    
+    level = logging.INFO
+    if int(args.verbose) > 1:
+        level = logging.DEBUG
+    
+    logger.setLevel(level)
+    logger.addHandler(
+        log.stream_handler(level)
+    )
 
-    logging.info("snakemake will install conda environment in %s" % cprefix)
+    if args.log:
+        logger.addHandler(
+            log.file_handler(args.log,level)
+        )
+        
+    logger.info("snakemake will install conda environment in %s" % cprefix)
 
 
     CONFIG = {}
@@ -164,10 +174,10 @@ def main():
         snakargs = SNAKARGS 
     )
     
-    logging.info("running : " + cmd + " ... ")
+    logger.info("running : " + cmd + " ... ")
     os.system(cmd)
-    logging.info("clustering done.")
-    logging.info('exit')
+    logger.info("clustering done.")
+    logger.info('exit')
 
 
 if __name__ == "__main__":
