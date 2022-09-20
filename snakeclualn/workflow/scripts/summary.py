@@ -3,14 +3,19 @@ import sys
 import pandas as pd
 
 def clusummary(df):
+    
+    nof_clusters = len(list(df[df[0].duplicated()][0].unique()))
+    nof_singletons = len(set(df[0])) - len(list(df[df[0].duplicated()][0].unique()))
+    total = len(list(df[0]))
     t = df.groupby(0).count()
-    print((t[t[1]>=10].shape[0] * 100) / df.shape[0])
     return {
-        "cluster":len(list(df[df[0].duplicated()][0].unique())),
+        "cluster": nof_clusters,
         "cluster (>10)": t[t[1]>=10].shape[0], 
-        "input_in_cluster (%)": (t[t[1]>=10].shape[0] * 100) / df.shape[0], 
-        "singletons":len(set(df[0])) - len(list(df[df[0].duplicated()][0].unique())),
-        "total_seq":len(list(df[0])),
+        "input_in_cluster_>_10 (%)": t[t[1]>=10][1].sum() / total * 100, 
+        "input_in_cluster (%)": t[t[1]>1][1].sum() / total * 100, 
+        "singletons":nof_singletons,
+        "singletons (%)":nof_singletons / total * 100,
+        "total_seq":total,
     }
 
 def per_clu_stats(clusterdir):

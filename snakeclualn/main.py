@@ -4,6 +4,9 @@ import os
 import logging
 import yaml
 
+from snakeclualn.workflow.scripts import log
+logger = log.setlogger()
+
 _SNAKEFILE =  os.path.join(os.path.dirname(__file__), 'workflow/Snakefile')
 
 
@@ -103,12 +106,12 @@ def get_args():
         help="logfile"
     )   
 
-    parser.add_argument(
-        '-e',
-        '--extension',
-        default=".fa",
-        help="sequence file extension if input is a directory"
-    )
+    # parser.add_argument(
+    #     '-e',
+    #     '--extension',
+    #     default=".fa",
+    #     help="sequence file extension if input is a directory"
+    # )
 
     parser.add_argument('--snakargs', dest='snakargs', type=str, default="-j10",
             help='snakmake arguments')
