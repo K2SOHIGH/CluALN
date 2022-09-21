@@ -28,7 +28,8 @@ def per_clu_stats(clusterdir):
             df = pd.read_csv(table,sep="\t",header=0,index_col=None)
             data[int(cluster.replace("cluster_",""))] = {
                 "cluster_id":cluster,
-                "#seq": len(set(list(df.id1) + list(df.id2))),
+                "cluster_rep":df.loc[0,"id1"],
+                "#seq": len(set(list(df.id1) + list(df.id2))),                
                 "align_len": df.len_aln.mean(),
                 "mean_pid" : df.identity_percent.mean(),
                 "mean_coverage" : df.coverage_1_2.mean(),

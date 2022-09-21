@@ -19,7 +19,7 @@ class CustomFormatter(logging.Formatter):
 
     FORMATS = {
         logging.DEBUG: reset + format + reset,
-        logging.INFO: yellow + format + reset,
+        logging.INFO: magenta + format + reset,
         logging.WARNING: cyan + format + reset,
         logging.ERROR: red + format + reset,
         logging.CRITICAL: bold_red + format + reset
