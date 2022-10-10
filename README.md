@@ -3,7 +3,7 @@
 Use mmseqs2 for sequence clustering. If --per-clu-msa is set, each cluster is aligned using mafft and MSAs produced are merged with mafft-merge utility. 
 
 
-<figure><img src="clualn.jpg"><figcaption>image caption</figcaption></figure>
+<figure><img src="clualn.jpg"><figcaption>workflow</figcaption></figure>
 
 # DEPENDENCIES :
     - snakemake
