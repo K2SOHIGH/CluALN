@@ -52,6 +52,7 @@ def write_fasta( cluid , records, outdir ):
             sys.stdout.write(">{}\t{}\n".format(r.id,r.description))
             sys.stdout.write("{}\n".format(str(r.seq)))
 
+
 def find_record(rid,records):
     """
         rid : mmseqs truncated identifier

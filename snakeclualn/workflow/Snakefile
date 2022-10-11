@@ -26,46 +26,78 @@ from scripts import snakeutils as su
         - config["res_dir"]/seqDB
 """
 
-TARGET = [os.path.join(config['res_dir'],'clustering','clu.done')]
-if config ["per_clu_msa"]:
-    """
-        each cluster will be aligned and pairwise identity will be compute
-    """
-    TARGET.append(
-        os.path.join(config['res_dir'],'per_clu_msa.done')
-    )
-
 
 if config ["merge"]:    
     """
         each cluster will be aligned and pairwise identity will be compute AND msaS will be merged.
     """
-    TARGET += [
+    MERGE_TARGET = [
         os.path.join(config['res_dir'],'merged','merge.done'),
-        os.path.join(config['res_dir'],'per_clu_msa.done'),
+        os.path.join(config['res_dir'],'representatives','rep.done')
     ]
     
+
 rule all:
+    """
+        Final rule
+    """
     output:
         os.path.join(config['res_dir'],'summary.txt')
     input:  
-        TARGET,
+        os.path.join(config['res_dir'],'clustering','clu.done'),
+        os.path.join(config['res_dir'],'per_cluser','per_clu_msa.done'),
+        MERGE_TARGET,
     params:
         resdir = config["res_dir"],
     script:
         os.path.join('scripts','summary.py')
 
+
+
+# ------------------------------------------------------------------------------------------ #
+
+# REPRESENTATIVES TARGET
+
+
+rule rep_target:
+    output:
+        touch(temp(os.path.join(config['res_dir'],'representatives','rep.done')))
+    input:
+        os.path.join(config["res_dir"],"representatives","tables","identity.tsv"),
+        os.path.join(config["res_dir"],"representatives","tables","similarity.tsv"),
+        os.path.join(config["res_dir"],"representatives","tables","summary.tsv"),
+
+
+rule extract_rep_aln:
+    output:
+        os.path.join(config["res_dir"],"representatives","alignements","msa.aln"),    
+    input:
+        fasta = os.path.join(config["res_dir"],"merged","alignements","msa.aln"),
+        clufile = os.path.join(config["res_dir"],"clustering","tables","clusters.tsv"),    
+    conda:
+        os.path.join("envs","biopy.yaml")
+    script:
+        os.path.join("scripts",'get_representatives.py')
+        
+
+
+
+# ------------------------------------------------------------------------------------------ #
+
+# MERGE PER CLUSTER MSAs INTO GLOBAL MSA AND EXTRACT REPRESENTATIVES MSA 
 rule merge_target:
     output:
         touch(temp(os.path.join(config['res_dir'],'merged','merge.done')))
     input:
-        os.path.join(config['res_dir'],'per_clu_msa.done'),
-        os.path.join(config['res_dir'],'clustering','clu.done'),
         os.path.join(config["res_dir"],"merged","tables","identity.tsv"),
         os.path.join(config["res_dir"],"merged","tables","similarity.tsv"),
         os.path.join(config["res_dir"],"merged","tables","summary.tsv"),
 
 
+# ------------------------------------------------------------------------------------------ #
+
+# REP AND PER CLUSTER MSA TARGETS
+## PER CLUSTER
 def aggregate_cluster_id(wildcards):
     import glob
     checkpoint_output = checkpoints.cluster2fasta.get(**wildcards).output[0]
@@ -79,30 +111,23 @@ def aggregate_cluster_id(wildcards):
     return idt + sim + su
 
 
-
 rule per_cluster_target:
     output:
-        touch(temp(os.path.join(config['res_dir'],'per_clu_msa.done')))
+        touch(temp(os.path.join(config['res_dir'],'per_cluser','per_clu_msa.done')))
     input:        
-        os.path.join(config['res_dir'],'clustering','clu.done'),
         aggregate_cluster_id,
 
+## REP
 rule clustering_target:
     output:
         touch(temp(os.path.join(config['res_dir'],'clustering','clu.done')))
     input:
-        expand(os.path.join(config["res_dir"],"{target}","tables","clusters.tsv"),target="clustering"),
-        expand(os.path.join(config["res_dir"],"{target}","tables","consensus_length.tsv"),target="clustering"),
-        expand(os.path.join(config["res_dir"],"{target}","tables","identity.tsv"),target="clustering"),
-        expand(os.path.join(config["res_dir"],"{target}","tables","similarity.tsv"),target="clustering"),
-        expand(os.path.join(config["res_dir"],"{target}","tables","summary.tsv"),target="clustering"),
+        os.path.join(config["res_dir"],"clustering","tables","clusters.tsv"),
+        os.path.join(config["res_dir"],"clustering","tables","consensus_length.tsv"),
+    
+# ------------------------------------------------------------------------------------------ #
 
-
-def get_input_idt(wildcards):
-    if wildcards.which == "all":
-        return os.path.join(config["res_dir"],"{fasta}","alignements","clusters.msa.aln"),
-    return os.path.join(config["res_dir"],"{fasta}","fastas","representatives.aln.fasta")
-
+# PAIRWISE MATRICES
 
 rule identity_matrix:
     output:
@@ -118,8 +143,10 @@ rule identity_matrix:
     script:
         os.path.join('scripts','get_identity_matrix.py')
 
+# ------------------------------------------------------------------------------------------ #
 
-# MSA
+# MSA USING MAFFT 
+
 rule cluster_msa2msa:
     output:
         os.path.join(config["res_dir"],"merged","alignements","msa.aln")
@@ -131,14 +158,16 @@ rule cluster_msa2msa:
     conda:
         os.path.join("envs","mafft.yaml")
     threads:
-        10 #multiprocessing.cpu_count()
+        20 #multiprocessing.cpu_count()
     shell:
         'mkdir -p {params.outdir} ; '
         'if [[ $(cat {input.tbl} | grep -c "#") == 1 ]] ; then '
         '   cat {input.msas} > {output};'
         'else '
-        '   mafft --thread {threads} --anysymbol --maxiterate 100 --merge {input.tbl} {input.msas} > {output};'
+        '   mafft --thread {threads} --anysymbol --merge {input.tbl} {input.msas} > {output};'
         'fi'
+        #--maxiterate 50
+
 
 def aggregate_cluster(wildcards):
     import glob
@@ -146,6 +175,7 @@ def aggregate_cluster(wildcards):
     clusters = [os.path.basename(i) for i in glob.glob(os.path.join(checkpoint_output, "cluster_*" ))]
     return expand(os.path.join(config["res_dir"],"per_cluster","{cluster}","alignements","msa.aln"),
         cluster = clusters)
+
 
 rule mafft_merge_input:
     output:
@@ -156,17 +186,22 @@ rule mafft_merge_input:
     script:
         os.path.join("scripts",'makemergeinput.py')
 
+
 rule mafft:
+    """
+        where target = /per_cluser/<cluster_id>
+    """
     output:
-        os.path.join(config["res_dir"],"{target}","alignements","msa.aln"), 
+        os.path.join(config["res_dir"],"per_cluster", "{cluster}","alignements","msa.aln"), 
     input:
-        os.path.join(config["res_dir"],"{target}","fastas","seq.fasta"),  
+        os.path.join(config["res_dir"],"per_cluster","{cluster}","fastas","seq.fasta"),  
     conda:
         os.path.join("envs","mafft.yaml")
     threads:
         10 
     shell:
         "mafft --thread {threads} --anysymbol --quiet {input} > {output}"
+
 
 checkpoint cluster2fasta:
     output:
@@ -179,7 +214,10 @@ checkpoint cluster2fasta:
     script:
         os.path.join("scripts",'clu2fasta.py')
 
+# ------------------------------------------------------------------------------------------ #
+
 # CLUSTERING
+
 rule get_consensus_length:
     output:
         os.path.join(config["res_dir"],"clustering","tables","consensus_length.tsv")
@@ -189,6 +227,7 @@ rule get_consensus_length:
         os.path.join("envs","biopy.yaml")
     script:
         os.path.join('scripts','get_length.py')
+
 
 rule profiles2consensus:
     output:
@@ -204,8 +243,6 @@ rule profiles2consensus:
     shell:
         "mmseqs profile2consensus {params.proDB} {params.consensusDB} -v {params.verbose}  && "
         "mmseqs convert2fasta {params.consensusDB} {output.fasta} -v {params.verbose}"
-
-
 
 rule cluster2profiles: 
     output:
@@ -226,7 +263,7 @@ rule cluster2profiles:
 
 rule representative2fasta:
     output:
-        os.path.join(config["res_dir"],"clustering","fastas","seq.fasta"),    
+        os.path.join(config["res_dir"],"clustering","fastas","representative.fasta"),    
     input:
         os.path.join(config["res_dir"],"clustering","tables","clusters.tsv"),
     params:
@@ -239,8 +276,6 @@ rule representative2fasta:
     shell:
         "mmseqs createsubdb {params.cluDB} {params.seqDB} {params.cluDB}.rep ;"
         "mmseqs convert2fasta {params.cluDB}.rep {output}" 
-
-
 
 rule cluster2tsv:
     output:
@@ -264,7 +299,6 @@ rule cluster2tsv:
 rule clustering:
     output:
         os.path.join(config["res_dir"],"clustering","clustering.done"),
-        #produce <config["res_dir"]>/cluDB
     input:
         os.path.join(config["res_dir"],"clustering","createdb.done")
     conda:
