@@ -179,8 +179,6 @@ def pairwise_comparison(args):
 
     data=[]
     
-    logger.info("Running batch {} vs batch {}. ".format(combi[0],combi[1]))
-    
     for id1,seq1 in tqdm( set1.items() , position=pos, leave=True , desc = "Batches : {}".format(str(combi))) :        
     
         for id2,seq2 in set2.items():
@@ -204,8 +202,8 @@ def split_dict(d, n):
     return batches
 
 
-def run_comparison( dico_fasta , similar_aa):
-    batch_size = 100
+def run_comparison( dico_fasta , similar_aa , threads):
+    batch_size = 200
 
     dico_fasta = dict(sorted(dico_fasta.items()))
 
@@ -231,8 +229,7 @@ def run_comparison( dico_fasta , similar_aa):
                     ( batches[b1].copy() , batches[b2].copy() , similar_aa , (b1,b2) , pos)
                 )
             pos += 1
-    
-    threads = multiprocessing.cpu_count() - 1               
+
     logger.info("Compare sequences by batch [n={} seq] with {} threads".format(batch_size,threads))
     with multiprocessing.Pool(threads) as p:  
               
@@ -293,9 +290,9 @@ def parseargs():
     )
     #parser.add_argument('-',nargs='+',default=sys.stdin)
     parser.add_argument("-i",'--infile',help="fasta file")
-    parser.add_argument('-m','--matrice',required=True,help="scoring matrice e.g BLOSUM62")
-    parser.add_argument('--distance',action="store_true",help="save also distance matrices from identity and similarity scores")
+    parser.add_argument('-m','--matrice',required=True,help="scoring matrice e.g BLOSUM62")    
     parser.add_argument('-o',default=sys.stdout,help="output directory")
+    parser.add_argument('-t','--threads', default=multiprocessing.cpu_count(), help="number of threads")
     parser.add_argument('--log',default=sys.stdout,help="output directory")
     args = parser.parse_args()
     return args
@@ -305,7 +302,8 @@ def parsesnake():
             matrice = str(snakemake.params.matrix),
             distance = str(snakemake.params.distance),
             o = str(snakemake.params.outdir),
-            log = str(snakemake.log)
+            log = str(snakemake.log),
+            threads = int(snakemake.threads)
         )
     return args
 
@@ -338,7 +336,7 @@ if __name__ == '__main__':
     file_fasta = args.infile
     matrix = args.matrice
     outdir = args.o
-
+    print(args.threads)
     if isinstance(outdir,str):
         os.makedirs(outdir,exist_ok=True)
 
@@ -355,7 +353,7 @@ if __name__ == '__main__':
         
         # 1 : pairwise_iteration
         pairwise_df_flat = pd.DataFrame(
-            run_comparison( dico_fasta , similar_aa )
+            run_comparison( dico_fasta , similar_aa , args.threads)
             )
         
         #len_seq1, len_seq2 , len(seq2),  match , perc_of_id , identity_distance , perc_of_sim , similarity_distance , coverage_1_2 , coverage_2_1 , gap

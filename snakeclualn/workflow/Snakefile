@@ -150,6 +150,8 @@ rule identity_matrix:
         matrix = workflow.source_path("../resources/BLOSUM62.txt"),
         outdir = os.path.join(config["res_dir"],"{target}","tables"),
         distance = True,
+    threads:
+        config["threads"],
     conda:
         os.path.join("envs","biopy.yaml")
     script:
@@ -170,7 +172,7 @@ rule cluster_msa2msa:
     conda:
         os.path.join("envs","mafft.yaml")
     threads:
-        20 #multiprocessing.cpu_count()
+        config["threads"] #multiprocessing.cpu_count()
     shell:
         'mkdir -p {params.outdir} ; '
         'if [[ $(cat {input.tbl} | grep -c "#") == 1 ]] ; then '

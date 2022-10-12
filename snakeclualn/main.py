@@ -1,4 +1,5 @@
 import argparse
+import multiprocessing
 import sys
 import os
 import logging
@@ -93,6 +94,14 @@ def get_args():
     )
 
     parser.add_argument(
+        '-t',
+        '--threads',
+        type = int,
+        default = multiprocessing.cpu_count(),
+        help = "number of threads",
+    )
+
+    parser.add_argument(
         '--log',
         dest = "log",
         type = str,
@@ -101,7 +110,7 @@ def get_args():
     )   
 
 
-    parser.add_argument('--snakargs', dest='snakargs', type=str, default="-j10",
+    parser.add_argument('--snakargs', dest='snakargs', type=str, default="",
             help='snakmake arguments')
     
     args = parser.parse_args()
@@ -154,9 +163,10 @@ def main():
     
 
     cmd = """
-        snakemake --snakefile {snakefile} --rerun-triggers mtime --use-conda --configfile {config} --conda-prefix {cp} {snakargs}
+        snakemake --snakefile  {snakefile} -j{threads} --rerun-triggers mtime --use-conda --configfile {config} --conda-prefix {cp} {snakargs}
     """.format( 
         snakefile = _SNAKEFILE ,
+        threads = args.threads,
         cp = cprefix,  
         config = args.res_dir + "/config.yaml", 
         snakargs = SNAKARGS 
