@@ -17,11 +17,15 @@ import pandas as pd
 import argparse
 try:
     from tqdm import tqdm
-    print("tqdm loaded")
-    tqdm([i for i in range(0,100000)])
+    print("tqdm loaded")    
 except ModuleNotFoundError:
     print("error while loading tqdm")
     
+
+import log
+
+logger = log.setlogger("pairwise_comparison")
+
 # Fonctions
 def parse_dict(old_dict):
     new_dict={}
@@ -124,7 +128,7 @@ def match_missmatch_count(dico_fasta):
         return a tuple (id1,id2,count,len1,len2)
     """
 
-def _pairwise_comparison(seq1,seq2,similar_aa):
+def _pairwise_comparison(seq1,seq2,id1,id2,similar_aa):
     """
         match , identity match and gap counts
     """
@@ -150,17 +154,15 @@ def _pairwise_comparison(seq1,seq2,similar_aa):
         if (i,j) in similar_aa or (j,i) in similar_aa:
             similitude += 1
 
-    perc_of_id  = round(100*ident/(len(seq2)-gap),1)
-    identity_distance = round(100-100*ident/(len(seq2)-gap), 1)/100
-    perc_of_sim = round(100*similitude/(len(seq2)-gap), 1)
-    similarity_distance = round(100-100*similitude/(len(seq2)-gap), 1)/100
-    # compute coverage (number of aa aligned between seq1 and seq2 even if it's a missmatch)                                            
-    try:
-        coverage_1_2 = match/len_seq1
-        coverage_2_1 = match/len_seq2            
-    except ZeroDivisionError:
-        coverage_1_2 = None
-        coverage_2_1 = None
+    shortest_seq_length = min([len_seq1,len_seq2])
+    perc_of_id  = round(100*ident/shortest_seq_length,1)
+    identity_distance = round(100-100*ident/shortest_seq_length, 1)/100
+    perc_of_sim = round(100*similitude/shortest_seq_length, 1)
+    similarity_distance = round(100-100*similitude/shortest_seq_length, 1)/100
+
+    # compute coverage (number of aa aligned between seq1 and seq2 even if it's a missmatch)                                                
+    coverage_1_2 = match/len_seq1
+    coverage_2_1 = match/len_seq2            
 
     return len_seq1, len_seq2 , len(seq2),  match , perc_of_id , identity_distance , perc_of_sim , similarity_distance , coverage_1_2 , coverage_2_1 , gap
 
@@ -170,12 +172,16 @@ def pairwise_comparison(dico_fasta,matrix):
     seq1_d = dico_fasta.copy()
     seq2_d = dico_fasta.copy()
     data=[]
+    logger.info("{} comparisons ( N * (N-1)  where N={}).".format(
+            len(seq1_d) * (len(seq1_d) - 1 ),
+            len(seq1_d)
+        )
+    )
     for id1,seq1 in tqdm(seq1_d.items()):        
         for id2,seq2 in seq2_d.items():
-            # _pairwise_comparison (compare each position between seq1 and seq2) - return match count, identity count and gap count as tuple            
-            
+            # _pairwise_comparison (compare each position between seq1 and seq2) - return match count, identity count and gap count as tuple                      
             d = (id1,id2)
-            metrics = _pairwise_comparison(seq1,seq2,similar_aa)
+            metrics = _pairwise_comparison(seq1,seq2,id1,id2,similar_aa)
             d += metrics
             
             try:                
@@ -193,7 +199,7 @@ def pairwise_comparison(dico_fasta,matrix):
     #   "seq1 coverage"
     #   "seq2 coverage"
     #   "seq1 identifier"
-    #   "percentage of identity" where pid here is the number of correct match divide by the length of the alignment minus gap.
+    #   "percentage of identity" where pid here is the number of correct match divide by the length of the shortest sequence.
     #   "number of gap"
     return data
 
@@ -220,6 +226,7 @@ def parseargs():
     parser.add_argument('-m','--matrice',required=True,help="scoring matrice e.g BLOSUM62")
     parser.add_argument('--distance',action="store_true",help="save also distance matrices from identity and similarity scores")
     parser.add_argument('-o',default=sys.stdout,help="output directory")
+    parser.add_argument('--log',default=sys.stdout,help="output directory")
     args = parser.parse_args()
     return args
 
@@ -227,7 +234,8 @@ def parsesnake():
     args = argparse.Namespace(infile=str(snakemake.input.msa),
             matrice = str(snakemake.params.matrix),
             distance = str(snakemake.params.distance),
-            o = str(snakemake.params.outdir)
+            o = str(snakemake.params.outdir),
+            log = str(snakemake.log)
         )
     return args
 
@@ -243,6 +251,20 @@ if __name__ == '__main__':
     else:
         args = parseargs()
 
+    if args.log != sys.stdout:
+        logdir = os.path.dirname(os.path.abspath(args.log))            
+        
+        os.makedirs(logdir,exist_ok=True)
+        
+        logger.addHandler(
+            log.file_handler(args.log,"INFO")
+        )
+    
+    else:
+        logger.addHandler(
+            log.stream_handler("INFO")
+        )
+
     file_fasta = args.infile
     matrice = args.matrice
     outdir = args.o
@@ -256,39 +278,42 @@ if __name__ == '__main__':
     
     # si fasta > 1 do something
     if len(dico_fasta) > 1:
+        logger.info("Fasta file is suitable for pairwise comparison (n>1) ")
+        
         # 1 : pairwise_iteration
-        pairwise_df_flat = pd.DataFrame(pairwise_comparison(dico_fasta , matrice ))
+        pairwise_df_flat = pd.DataFrame(
+            pairwise_comparison(dico_fasta , matrice )
+            )
         
         #len_seq1, len_seq2 , len(seq2),  match , perc_of_id , identity_distance , perc_of_sim , similarity_distance , coverage_1_2 , coverage_2_1 , gap
         pairwise_df_flat.columns="id1,id2,len_seq1,len_seq2,len_aln,match,identity_percent,identity_distance,similarity_percent,similarity_distance,coverage_1_2,coverage_2_1,gap_count".split(",")
         
-
+        logger.info("Building matrices.")
         ipdf = make_matrix(pairwise_df_flat,"identity_percent")
         iddf = make_matrix(pairwise_df_flat,"identity_distance")
         spdf = make_matrix(pairwise_df_flat,"similarity_percent")
         sddf = make_matrix(pairwise_df_flat,"similarity_distance")
+        logger.info("Done.")
 
-    
-        print("Identity (%): \n")
-        ipdf.to_csv( generate_outfilename(outdir, "identity_percent")  ,sep="\t",header=True,index=True)
-        print("Identity (distance): \n")
-        iddf.to_csv( generate_outfilename(outdir, "identity_distance"), sep="\t",header=True,index=True)
-        print("\nSimilarity (%) : \n")
-        spdf.to_csv(generate_outfilename(outdir, "similarity_percent"), sep="\t",header=True,index=True)
-        print("\nSimilarity (distance) : \n")
+        ipdf.to_csv( generate_outfilename(outdir, "identity_percent")  ,sep="\t",header=True,index=True)        
+        iddf.to_csv( generate_outfilename(outdir, "identity_distance"), sep="\t",header=True,index=True)        
+        spdf.to_csv(generate_outfilename(outdir, "similarity_percent"), sep="\t",header=True,index=True)        
         sddf.to_csv( generate_outfilename(outdir, "similarity_distance"), sep="\t",header=True,index=True)
                     
         pairwise_df_flat.to_csv( generate_outfilename(outdir,"summary") ,sep="\t",header=True,index=False)
-
+        
     else:
-        open(os.path.join(outdir,"identity_percent.tsv"),'w').close()
-        open(os.path.join(outdir,"identity_distance.tsv"),'w').close()
-        open(os.path.join(outdir,"similarity_percent.tsv"),'w').close()
-        open(os.path.join(outdir,"similarity_distance.tsv"),'w').close()
-        open(os.path.join(outdir,"summary.tsv"),'w').close()
+        logger.info("Fasta file is not suitable for pairwise comparison (n==1)")        
+        if 'snakemake' in globals():
+            logger.info("Creating dummy output file for snakemake")
+            open(os.path.join(outdir,"identity_percent.tsv"),'w').close()
+            open(os.path.join(outdir,"identity_distance.tsv"),'w').close()
+            open(os.path.join(outdir,"similarity_percent.tsv"),'w').close()
+            open(os.path.join(outdir,"similarity_distance.tsv"),'w').close()
+            open(os.path.join(outdir,"summary.tsv"),'w').close()
 
 
-
+    logger.info("End.")
 
     #     with open(os.path.join())
     #     for i in UPGMA(li_sim, ide):

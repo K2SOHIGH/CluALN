@@ -67,10 +67,10 @@ rule rep_target:
     output:
         touch(temp(os.path.join(config['res_dir'],'representatives','rep.done')))
     input:
-        os.path.join(config["res_dir"],"representatives","tables","identity.tsv"),
-        os.path.join(config["res_dir"],"representatives","tables","similarity.tsv"),
-        os.path.join(config["res_dir"],"representatives","tables","summary.tsv"),
-
+        os.path.join(config["res_dir"],"representatives","tables","identity_percent.tsv"),
+        os.path.join(config["res_dir"],"representatives","tables","identity_distance.tsv"),
+        os.path.join(config["res_dir"],"representatives","tables","similarity_percent.tsv"),
+        os.path.join(config["res_dir"],"representatives","tables","similarity_distance.tsv"),
 
 rule extract_rep_aln:
     output:
@@ -144,6 +144,8 @@ rule identity_matrix:
         os.path.join(config["res_dir"],"{target}","tables","summary.tsv"),
     input:
         msa = os.path.join(config["res_dir"],"{target}","alignements","msa.aln")
+    log:
+        os.path.join(config["res_dir"],"{target}","tables","msa_pairwise_comparison.log"),
     params:
         matrix = workflow.source_path("../resources/BLOSUM62.txt"),
         outdir = os.path.join(config["res_dir"],"{target}","tables"),
