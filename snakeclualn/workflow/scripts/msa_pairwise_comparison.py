@@ -10,16 +10,18 @@ Année : 2019-2020
 """
 # Modules utiles
 
+from concurrent.futures import process
 import sys
 import os
 import numpy as np
 import pandas as pd
 import argparse
-try:
-    from tqdm import tqdm
-    print("tqdm loaded")    
-except ModuleNotFoundError:
-    print("error while loading tqdm")
+import time
+import multiprocessing 
+
+from tqdm import tqdm       
+
+
     
 
 import log
@@ -71,6 +73,7 @@ def parse_scoring_matrix(matrice):
         diff: list of aa with a score egal to 0
     
     """
+    # global SIMILAR_AA
     with open(matrice, "r") as mat:
         file = []
         for line in mat:
@@ -85,14 +88,15 @@ def parse_scoring_matrix(matrice):
             aa = (file[0][j], file[i][0])
             dico_mat[aa] = file[i][j+1]
 
-    similitude = []
+    SIMILAR_AA = []
     diff = []
     for i in dico_mat:
         if int(dico_mat[i]) > 0:
-            similitude.append(i)
+            SIMILAR_AA.append(i)
         else:
             diff.append(i)
-    return similitude, diff
+    
+    return SIMILAR_AA, diff
 
 
 def parse_fasta(fasta_fichier):
@@ -128,7 +132,7 @@ def match_missmatch_count(dico_fasta):
         return a tuple (id1,id2,count,len1,len2)
     """
 
-def _pairwise_comparison(seq1,seq2,id1,id2,similar_aa):
+def _pairwise_comparison(seq1,seq2,similar_aa):
     """
         match , identity match and gap counts
     """
@@ -155,41 +159,107 @@ def _pairwise_comparison(seq1,seq2,id1,id2,similar_aa):
             similitude += 1
 
     shortest_seq_length = min([len_seq1,len_seq2])
-    perc_of_id  = round(100*ident/shortest_seq_length,1)
-    identity_distance = round(100-100*ident/shortest_seq_length, 1)/100
-    perc_of_sim = round(100*similitude/shortest_seq_length, 1)
-    similarity_distance = round(100-100*similitude/shortest_seq_length, 1)/100
-
-    # compute coverage (number of aa aligned between seq1 and seq2 even if it's a missmatch)                                                
-    coverage_1_2 = match/len_seq1
-    coverage_2_1 = match/len_seq2            
-
+    
+    try:
+        perc_of_id  = round(100*ident / shortest_seq_length,1)
+        identity_distance = round(100-100*ident / shortest_seq_length, 1)/100
+        perc_of_sim = round(100*similitude / shortest_seq_length, 1)
+        similarity_distance = round(100-100*similitude / shortest_seq_length, 1)/100
+        # compute coverage (number of aa aligned between seq1 and seq2 even if it's a missmatch)                                                
+        coverage_1_2 = match/len_seq1
+        coverage_2_1 = match/len_seq2           
+    except ZeroDivisionError:        
+        return None, None , None ,  None , None , None , None , None , None , None , None        
     return len_seq1, len_seq2 , len(seq2),  match , perc_of_id , identity_distance , perc_of_sim , similarity_distance , coverage_1_2 , coverage_2_1 , gap
 
-def pairwise_comparison(dico_fasta,matrix):
-    dico_fasta = dict(sorted(dico_fasta.items()))
-    similar_aa, _  = parse_scoring_matrix(matrix)
-    seq1_d = dico_fasta.copy()
-    seq2_d = dico_fasta.copy()
+
+def pairwise_comparison(args):
+    
+    set1,set2,similar_aa,combi,pos=args
+
     data=[]
+    
+    logger.info("Running batch {} vs batch {}. ".format(combi[0],combi[1]))
+    
+    for id1,seq1 in tqdm( set1.items() , position=pos, leave=True , desc = "Batches : {}".format(str(combi))) :        
+    
+        for id2,seq2 in set2.items():
+            # _pairwise_comparison (compare each position between seq1 and seq2) - return match count, identity count and gap count as tuple                      
+            d = (id1,id2)   
+               
+            metrics = _pairwise_comparison(seq1,seq2,similar_aa)                
+            d += metrics      
+            data.append(d)
+                        
+        set2.pop(id1, None)
+
+    return data
+
+
+def split_dict(d, n):
+    keys = list(d.keys())
+    batches = []
+    for i in range(0, len(keys), n):
+        batches.append( {k: d[k] for k in keys[i: i + n]} )
+    return batches
+
+
+def run_comparison( dico_fasta , similar_aa):
+    batch_size = 100
+
+    dico_fasta = dict(sorted(dico_fasta.items()))
+
+    batches = split_dict(dico_fasta,batch_size)
+
     logger.info("{} comparisons ( N * (N-1)  where N={}).".format(
-            len(seq1_d) * (len(seq1_d) - 1 ),
-            len(seq1_d)
+            len(dico_fasta) * (len(dico_fasta) - 1 ),
+            len(dico_fasta)
         )
     )
-    for id1,seq1 in tqdm(seq1_d.items()):        
-        for id2,seq2 in seq2_d.items():
-            # _pairwise_comparison (compare each position between seq1 and seq2) - return match count, identity count and gap count as tuple                      
-            d = (id1,id2)
-            metrics = _pairwise_comparison(seq1,seq2,id1,id2,similar_aa)
-            d += metrics
-            
-            try:                
-                data.append(d)                
-            except ZeroDivisionError:                  
-                data.append(d)
+
+    st = time.time()
+    data=[]
+    processes = []
+    combi = []
+    pos = 0
+    for b1 in range(0,len(batches),1):
+        for b2 in range(0,len(batches),1):            
+            if (b1,b2) not in combi or (b2,b1) not in combi:
+                combi+= [(b1,b2),(b2,b1)]
+                logger.info("batches {}-{}".format(b1,b2))
+                processes.append(
+                    ( batches[b1].copy() , batches[b2].copy() , similar_aa , (b1,b2) , pos)
+                )
+            pos += 1
+    
+    threads = multiprocessing.cpu_count() - 1               
+    logger.info("Compare sequences by batch [n={} seq] with {} threads".format(batch_size,threads))
+    with multiprocessing.Pool(threads) as p:  
+              
+        data += p.imap(pairwise_comparison , processes)
+
+    et = time.time()
+    elapsed_time = et - st
+    print('Execution time in multiprocessing mode :', elapsed_time, 'seconds')
+    # st = time.time()
+    # seq1_d = dico_fasta.copy()
+    # seq2_d = dico_fasta.copy()
+    # data=[]
+    # for id1,seq1 in seq1_d.items():        
+    #     for id2,seq2 in seq2_d.items():
+    #         # _pairwise_comparison (compare each position between seq1 and seq2) - return match count, identity count and gap count as tuple                      
+    #         d = (id1,id2)
+    #         try:
+    #             metrics = _pairwise_comparison(seq1,seq2,similar_aa)
+    #             d += metrics                                            
+    #             data.append(d)
+    #         except ZeroDivisionError:
+    #             pass
                 
-        seq2_d.pop(id1, None)
+    #     seq2_d.pop(id1, None)
+    # et = time.time()
+    # elapsed_time = et - st
+    # print('Execution time in sequential mode :', elapsed_time, 'seconds')
     # data is a list of tuple with the following value for each comparison : 
     #   "seq1 identifier"
     #   "seq2 identifier"
@@ -200,8 +270,8 @@ def pairwise_comparison(dico_fasta,matrix):
     #   "seq2 coverage"
     #   "seq1 identifier"
     #   "percentage of identity" where pid here is the number of correct match divide by the length of the shortest sequence.
-    #   "number of gap"
-    return data
+    #   "number of gap"    
+    return data[0]
 
 
 
@@ -266,23 +336,26 @@ if __name__ == '__main__':
         )
 
     file_fasta = args.infile
-    matrice = args.matrice
+    matrix = args.matrice
     outdir = args.o
 
     if isinstance(outdir,str):
         os.makedirs(outdir,exist_ok=True)
 
 
+    # load matix
+    similar_aa , _ = parse_scoring_matrix(matrix)
+
     # fasta into in dictionnary
     dico_fasta = parse_fasta(file_fasta)
-    
+
     # si fasta > 1 do something
     if len(dico_fasta) > 1:
         logger.info("Fasta file is suitable for pairwise comparison (n>1) ")
         
         # 1 : pairwise_iteration
         pairwise_df_flat = pd.DataFrame(
-            pairwise_comparison(dico_fasta , matrice )
+            run_comparison( dico_fasta , similar_aa )
             )
         
         #len_seq1, len_seq2 , len(seq2),  match , perc_of_id , identity_distance , perc_of_sim , similarity_distance , coverage_1_2 , coverage_2_1 , gap
@@ -298,8 +371,7 @@ if __name__ == '__main__':
         ipdf.to_csv( generate_outfilename(outdir, "identity_percent")  ,sep="\t",header=True,index=True)        
         iddf.to_csv( generate_outfilename(outdir, "identity_distance"), sep="\t",header=True,index=True)        
         spdf.to_csv(generate_outfilename(outdir, "similarity_percent"), sep="\t",header=True,index=True)        
-        sddf.to_csv( generate_outfilename(outdir, "similarity_distance"), sep="\t",header=True,index=True)
-                    
+        sddf.to_csv( generate_outfilename(outdir, "similarity_distance"), sep="\t",header=True,index=True)                    
         pairwise_df_flat.to_csv( generate_outfilename(outdir,"summary") ,sep="\t",header=True,index=False)
         
     else:
