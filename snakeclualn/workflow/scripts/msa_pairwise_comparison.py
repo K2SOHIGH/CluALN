@@ -10,12 +10,18 @@ Année : 2019-2020
 """
 # Modules utiles
 
-import sys, os
+import sys
+import os
 import numpy as np
 import pandas as pd
 import argparse
-
-
+try:
+    from tqdm import tqdm
+    print("tqdm loaded")
+    tqdm([i for i in range(0,100000)])
+except ModuleNotFoundError:
+    print("error while loading tqdm")
+    
 # Fonctions
 def parse_dict(old_dict):
     new_dict={}
@@ -45,19 +51,20 @@ def parse_dict_distance(old_dict):
         new_dict[k2].update({k2:0})
     return new_dict
 
-def mat_simi(matrice):
-    """ Lit une matrice de score.
+def parse_scoring_matrix(matrice):
+    """ 
+        load matrix and parse it into lists
 
-    Parametre
+    Parameters
     ----------
-    matrice : fichier txt
-        Matrice de score
+    matrix : txt file
+        Scoring matrix
 
     Returns
     -------
-    listes
-        similitude: acides aminés similaires dont le score > 0
-        diff: acides aminés non similaires
+    lists
+        similitude: list of similar aa (score > 0)
+        diff: list of aa with a score egal to 0
     
     """
     with open(matrice, "r") as mat:
@@ -84,7 +91,7 @@ def mat_simi(matrice):
     return similitude, diff
 
 
-def lit_fasta(fasta_fichier):
+def parse_fasta(fasta_fichier):
     """ Lit un fichier au format fasta.
 
     Parametre
@@ -117,244 +124,92 @@ def match_missmatch_count(dico_fasta):
         return a tuple (id1,id2,count,len1,len2)
     """
 
-def iter_seq(seq1,seq2):
+def _pairwise_comparison(seq1,seq2,similar_aa):
     """
         match , identity match and gap counts
     """
-    cpt=0
+
+    match=0
     gap=0
     ident=0
+    similitude=0
+
+    # retrieve sequence length without gap
+    len_seq1 = len(seq1.replace("-",""))
+    len_seq2 = len(seq2.replace("-",""))
+
     for i,j in zip(seq1,seq2):
         if i!="-" and j!="-":
-            cpt+=1 #match    
+            match+=1 #match    
             if i==j:
                 ident+=1                
         elif i == "-" or j == "-":
             gap += 1 #gap             
         else:
             sys.exit()
-    return cpt,ident,gap
+        if (i,j) in similar_aa or (j,i) in similar_aa:
+            similitude += 1
 
-#dico_ident[ide[i],ide[j]] = round(100*ident/(l-gap),1)
+    perc_of_id  = round(100*ident/(len(seq2)-gap),1)
+    identity_distance = round(100-100*ident/(len(seq2)-gap), 1)/100
+    perc_of_sim = round(100*similitude/(len(seq2)-gap), 1)
+    similarity_distance = round(100-100*similitude/(len(seq2)-gap), 1)/100
+    # compute coverage (number of aa aligned between seq1 and seq2 even if it's a missmatch)                                            
+    try:
+        coverage_1_2 = match/len_seq1
+        coverage_2_1 = match/len_seq2            
+    except ZeroDivisionError:
+        coverage_1_2 = None
+        coverage_2_1 = None
 
-def pairwise_iteration(dico_fasta):
+    return len_seq1, len_seq2 , len(seq2),  match , perc_of_id , identity_distance , perc_of_sim , similarity_distance , coverage_1_2 , coverage_2_1 , gap
+
+def pairwise_comparison(dico_fasta,matrix):
+    dico_fasta = dict(sorted(dico_fasta.items()))
+    similar_aa, _  = parse_scoring_matrix(matrix)
     seq1_d = dico_fasta.copy()
     seq2_d = dico_fasta.copy()
     data=[]
-    for id1,seq1 in seq1_d.items():
-        seq2_d.pop(id1, None)
+    for id1,seq1 in tqdm(seq1_d.items()):        
         for id2,seq2 in seq2_d.items():
-            mm_count,ident,gap = iter_seq(seq1,seq2)
-            len_seq1 = len(seq1.replace("-",""))
-            len_seq2 = len(seq2.replace("-",""))
-            try:
-                coverage_1_2 = mm_count/len_seq1
-                coverage_2_1 = mm_count/len_seq2
-                data.append((id1,id2,len_seq1,len_seq2,len(seq2),coverage_1_2,coverage_2_1,round(100*ident/(len(seq2)-gap),1),gap))
-            except ZeroDivisionError:
-                coverage_1_2 = None
-                coverage_2_1 = None
-                data.append((id1,id2,len_seq1,len_seq2,len(seq2),coverage_1_2,coverage_2_1,None,gap))
+            # _pairwise_comparison (compare each position between seq1 and seq2) - return match count, identity count and gap count as tuple            
+            
+            d = (id1,id2)
+            metrics = _pairwise_comparison(seq1,seq2,similar_aa)
+            d += metrics
+            
+            try:                
+                data.append(d)                
+            except ZeroDivisionError:                  
+                data.append(d)
+                
+        seq2_d.pop(id1, None)
+    # data is a list of tuple with the following value for each comparison : 
+    #   "seq1 identifier"
+    #   "seq2 identifier"
+    #   "seq1 length"
+    #   "seq2 length"
+    #   "aln length"
+    #   "seq1 coverage"
+    #   "seq2 coverage"
+    #   "seq1 identifier"
+    #   "percentage of identity" where pid here is the number of correct match divide by the length of the alignment minus gap.
+    #   "number of gap"
     return data
 
 
-def pourcentage_identite(n,l,sequences,ide):
-    """ Calcul le pourcentage d'identité par paire de
-        séquences alignées
 
-    Parametres
-    ----------
-    n : integer
-        file_fastabres de sequences alignées
-    l : integer
-        longueur de l'alignement
-    sequences: list
-        liste des sequences alignées
-    ide: list
-        liste des identifiants des protéines
-    Returns
-    -------
-    dict
-        Dictionnaire avec comme clé les identifiants par paire
-        et comme valeur son pourcentage d'identité
-    
-    """
-    dico_ident = {}
-    distan_iden={}
-    for i in range(n-1):
-        for j in range(i+1,n):
-            #paire séquences i,j
-            ident = gap = 0
-            
-            for c in range(l):
-                #gap dans l'alignement
-                if sequences[i][c] == "-" or sequences[j][c] == "-":
-                    gap += 1
-                # identite dans l'alignement
-                elif sequences[i][c] == sequences[j][c]:
-                    ident += 1
-            try:
-                distan_iden[ide[i],ide[j]] = round(100-100*ident/(l-gap), 1)/100
-                dico_ident[ide[i],ide[j]] = round(100*ident/(l-gap),1)
-            except ZeroDivisionError:
-                distan_iden[ide[i],ide[j]] = 0
-                dico_ident[ide[i],ide[j]] = 0
-    list_dist=[]
-    for i in range(n):
-        list_dist.append([])
-        for j in range(i):
-            if (ide[i],ide[j]) in distan_iden.keys():
-                list_dist[i].append(distan_iden[ide[i], ide[j]])
-            elif (ide[j],ide[i]) in distan_iden.keys():
-                list_dist[i].append(distan_iden[ide[j], ide[i]])
+def make_matrix(df,metric):
+    pairwise_dict = {}
+    for i,j in df.iterrows():            
+        if j["id1"] not in pairwise_dict:
+            pairwise_dict[j["id1"]] = {}
+        if j["id2"] not in pairwise_dict:
+            pairwise_dict[j["id2"]] = {}
+        pairwise_dict[j["id1"]].update({j["id2"] : j[metric]})        
+        pairwise_dict[j["id2"]].update({j["id1"] : j[metric]}) 
+    return pd.DataFrame.from_dict(pairwise_dict)
 
-    return dico_ident, distan_iden, list_dist
-
-
-def pourcentage_similitude(n,l,sequences,ide,similitude):
-    """ Calcul le pourcentage de similitude par paire de
-        séquences alignées
-
-    Parametres
-    ----------
-    n : integer
-        file_fastabres de sequences alignées
-    l : integer
-        longueur de l'alignement
-    sequences: list
-        liste des sequences alignées
-    ide: list
-        liste des identifiants des protéines
-    similitude: list
-        liste des acides aminés similaires sous forme de tuple ('A', 'A')
-    Returns
-    -------
-    dict
-        Dictionnaire avec comme clé les identifiants par paire
-        et comme valeur son pourcentage d'identité
-    
-    """    
-    
-    dico_simi = {}
-    distan_simi={}
-    for i in range(n-1):
-        for j in range(i+1,n):
-            #paire séquences i,j
-            simi=dif=gap=0
-            for c in range(l):
-                if sequences[i][c] == "-" or sequences[j][c] == "-":
-                    gap+=1
-                # similitude dans l'alignement
-                elif (sequences[i][c],sequences[j][c]) in similitude or ((sequences[j][c],sequences[i][c]) in similitude):
-                    simi+=1
-                else:
-                    dif+=1
-            #print(l-gap,l,gap)
-            try:
-                distan_simi[ide[i],ide[j]] = round(100-100*simi/(l-gap), 1)/100
-                dico_simi[ide[i],ide[j]] = round(100*simi/(l-gap), 1)
-            except ZeroDivisionError:
-                distan_simi[ide[i],ide[j]] = 1
-                dico_simi[ide[i],ide[j]] = 0
-            
-    li=[]
-    for i in range(n):
-        li.append([])
-        for j in range(i):
-            if (ide[i],ide[j]) in distan_simi.keys():
-                li[i].append(distan_simi[ide[i],ide[j]])
-            elif (ide[j],ide[i]) in distan_simi.keys():
-                li[i].append(distan_simi[ide[j],ide[i]])
-
-    return dico_simi, distan_simi, li
-
-
-
-# copyright https://github.com/lex8erna/UPGMApy
-
-""" 			DEBUT			"""
-
-# A Quick Implementation of UPGMA (Unweighted Pair Group Method with Arithmetic Mean)
-
-# lowest_cell:
-#   Locates the smallest cell in the table
-def lowest_cell(table):
-    # Set default to infinity
-    min_cell = float("inf")
-    x, y = -1, -1
-
-    # Go through every cell, looking for the lowest
-    for i in range(len(table)):
-        for j in range(len(table[i])):
-            if table[i][j] < min_cell:
-                min_cell = table[i][j]
-                x, y = i, j
-
-    # Return the x, y co-ordinate of cell
-    return x, y
-
-
-# join_labels:
-#   Combines two labels in a list of labels
-def join_labels(labels, a, b):
-    # Swap if the indices are not ordered
-    if b < a:
-        a, b = b, a
-
-    # Join the labels in the first index
-    labels[a] = "(" + labels[a] + "," + labels[b] + ")"
-
-    # Remove the (now redundant) label in the second index
-    del labels[b]
-
-
-# join_table:
-#   Joins the entries of a table on the cell (a, b) by averaging their data entries
-def join_table(table, a, b):
-    # Swap if the indices are not ordered
-    if b < a:
-        a, b = b, a
-
-    # For the lower index, reconstruct the entire row (A, i), where i < A
-    row = []
-    for i in range(0, a):
-        row.append((table[a][i] + table[b][i])/2)
-    table[a] = row
-    
-    # Then, reconstruct the entire column (i, A), where i > A
-    #   Note: Since the matrix is lower triangular, row b only contains values for indices < b
-    for i in range(a+1, b):        
-        table[i][a] = (table[i][a]+table[b][i])/2
-        
-    #   We get the rest of the values from row i
-
-    for i in range(b+1, len(table)):
-        table[i][a] = (table[i][a]+table[i][b])/2
-        # Remove the (now redundant) second index column entry
-        del table[i][b]
-
-    # Remove the (now redundant) second index row
-    del table[b]
-
-
-# UPGMA:
-#   Runs the UPGMA algorithm on a labelled table
-def UPGMA(table, labels):
-    # Until all labels have been joined...
-    while len(labels) > 1:
-        # Locate lowest cell in the table
-        x, y = lowest_cell(table)
-
-        # Join the table on the cell co-ordinates
-        join_table(table, x, y)
-
-        # Update the labels accordingly
-        join_labels(labels, x, y)
-
-    # Return the final label
-    return labels[0]
-
-""" 			FIN			"""
 
 def parseargs():
     parser = argparse.ArgumentParser(
@@ -370,12 +225,17 @@ def parseargs():
 
 def parsesnake():
     args = argparse.Namespace(infile=str(snakemake.input.msa),
-        matrice = str(snakemake.params.matrix),
-        distance = str(snakemake.params.distance),
-        o = str(snakemake.params.outdir)
+            matrice = str(snakemake.params.matrix),
+            distance = str(snakemake.params.distance),
+            o = str(snakemake.params.outdir)
         )
     return args
 
+def generate_outfilename(outdir,filename):
+    if outdir is sys.stdout:
+        return sys.stdout
+    else:
+        return os.path.join(outdir,filename + ".tsv")
 
 if __name__ == '__main__':   
     if 'snakemake' in globals():
@@ -386,59 +246,45 @@ if __name__ == '__main__':
     file_fasta = args.infile
     matrice = args.matrice
     outdir = args.o
+
     if isinstance(outdir,str):
         os.makedirs(outdir,exist_ok=True)
 
-    dico_fasta = lit_fasta(file_fasta)
+
+    # fasta into in dictionnary
+    dico_fasta = parse_fasta(file_fasta)
     
+    # si fasta > 1 do something
     if len(dico_fasta) > 1:
-        pairwise_df_flat = pd.DataFrame(pairwise_iteration(dico_fasta))
-        pairwise_df_flat.columns="id1,id2,len_seq1,len_seq2,len_aln,coverage_1_2,coverage_2_1,identity_percent,gap_count".split(",")
-        sequences = list(dico_fasta.values())
-        ide = list(dico_fasta.keys())
-        n = len(sequences)
-        l = len(sequences[0])
+        # 1 : pairwise_iteration
+        pairwise_df_flat = pd.DataFrame(pairwise_comparison(dico_fasta , matrice ))
+        
+        #len_seq1, len_seq2 , len(seq2),  match , perc_of_id , identity_distance , perc_of_sim , similarity_distance , coverage_1_2 , coverage_2_1 , gap
+        pairwise_df_flat.columns="id1,id2,len_seq1,len_seq2,len_aln,match,identity_percent,identity_distance,similarity_percent,similarity_distance,coverage_1_2,coverage_2_1,gap_count".split(",")
+        
+
+        ipdf = make_matrix(pairwise_df_flat,"identity_percent")
+        iddf = make_matrix(pairwise_df_flat,"identity_distance")
+        spdf = make_matrix(pairwise_df_flat,"similarity_percent")
+        sddf = make_matrix(pairwise_df_flat,"similarity_distance")
 
     
-        similitude = mat_simi(matrice)[0]
-        (dico_simi, distance, li_sim) = pourcentage_similitude(n,l,sequences,ide,similitude)
-        (dico_ident, dist, li_iden) = pourcentage_identite(n,l,sequences,ide)
+        print("Identity (%): \n")
+        ipdf.to_csv( generate_outfilename(outdir, "identity_percent")  ,sep="\t",header=True,index=True)
+        print("Identity (distance): \n")
+        iddf.to_csv( generate_outfilename(outdir, "identity_distance"), sep="\t",header=True,index=True)
+        print("\nSimilarity (%) : \n")
+        spdf.to_csv(generate_outfilename(outdir, "similarity_percent"), sep="\t",header=True,index=True)
+        print("\nSimilarity (distance) : \n")
+        sddf.to_csv( generate_outfilename(outdir, "similarity_distance"), sep="\t",header=True,index=True)
+                    
+        pairwise_df_flat.to_csv( generate_outfilename(outdir,"summary") ,sep="\t",header=True,index=False)
 
-
-  
-        dico_ident = parse_dict(dico_ident)
-        dico_simi = parse_dict(dico_simi)
-
-        
-        df = pd.DataFrame.from_dict(dico_ident,orient="index")
-        
-        if outdir is sys.stdout:
-            print("Identity : \n")
-            pd.DataFrame.from_dict(dico_ident,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
-            print("\nSimilarity : \n")
-            pd.DataFrame.from_dict(dico_simi,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
-            print("\nSummary : \n")
-            pairwise_df_flat.to_csv(outdir,sep="\t",header=True,index=False)
-        else:        
-            pd.DataFrame.from_dict(dico_ident,orient="index").to_csv(os.path.join(outdir,"identity.tsv"),sep="\t",header=True,index=True)
-            pd.DataFrame.from_dict(dico_simi,orient="index").to_csv(os.path.join(outdir,"similarity.tsv"),sep="\t",header=True,index=True)
-            pairwise_df_flat.to_csv(os.path.join(outdir,"summary.tsv"),sep="\t",header=True,index=False)
-
-
-        if args.distance:
-            dico_distance_sim = parse_dict_distance(distance)
-            dico_distance_identity = parse_dict_distance(dist)
-            if outdir is sys.stdout:
-                print("Distance Identity : \n")
-                pd.DataFrame.from_dict(dico_distance_identity,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
-                print("\nDistance Similarity : \n")
-                pd.DataFrame.from_dict(dico_distance_sim,orient="index").to_csv(outdir,sep="\t",header=True,index=True)
-            else:        
-                pd.DataFrame.from_dict(dico_distance_sim,orient="index").to_csv(os.path.join(outdir,"distance_sim.tsv"),sep="\t",header=True,index=True)
-                pd.DataFrame.from_dict(dico_distance_identity,orient="index").to_csv(os.path.join(outdir,"distance_idt.tsv"),sep="\t",header=True,index=True)
     else:
-        open(os.path.join(outdir,"identity.tsv"),'w').close()
-        open(os.path.join(outdir,"similarity.tsv"),'w').close()
+        open(os.path.join(outdir,"identity_percent.tsv"),'w').close()
+        open(os.path.join(outdir,"identity_distance.tsv"),'w').close()
+        open(os.path.join(outdir,"similarity_percent.tsv"),'w').close()
+        open(os.path.join(outdir,"similarity_distance.tsv"),'w').close()
         open(os.path.join(outdir,"summary.tsv"),'w').close()
 
 

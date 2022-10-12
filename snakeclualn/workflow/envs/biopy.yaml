@@ -3,7 +3,8 @@ channels:
   - conda-forge
   - bioconda
   - defaults
-dependencies:
+dependencies:  
   - biopython
   - pandas
+  - tqdm
 prefix: /Users/maxime/miniconda3/envs/biopy

@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-
 import pandas as pd
 import os
 import sys
-import numpy as np
 import re
-import gzip 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
@@ -86,9 +83,9 @@ def parseargs():
 
 def parsesnake():
     args = argparse.Namespace(
-        clu=str(snakemake.input.clu),
+        clu=    str(snakemake.input.clu),
         fasta = str(snakemake.input.fa),
-        out = str(snakemake.output)
+        out =   str(snakemake.output)
         )
     return args
 

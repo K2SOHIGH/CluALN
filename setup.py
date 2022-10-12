@@ -11,12 +11,11 @@ setup(
     author_email='maxime.luc.millet@gmail.com',
     license='MIT',
     packages=find_packages(),
-    install_requires=[
-        "snakemake",
-        "pyyaml==6.0",
-        "pandas"
-        
-    ],    
+    # install_requires=[
+    #     "snakemake==7.8.5",
+    #     "pyyaml==6.0",
+    #     "pandas"        
+    # ],    
     include_package_data=True,
     entry_points = {
         'console_scripts': ['clualn = snakeclualn.main:main'],
