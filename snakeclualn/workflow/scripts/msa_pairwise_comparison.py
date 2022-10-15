@@ -18,6 +18,7 @@ import pandas as pd
 import argparse
 import time
 import multiprocessing 
+from itertools import chain as itertoolschain
 
 from tqdm import tqdm       
 
@@ -237,7 +238,7 @@ def run_comparison( dico_fasta , similar_aa , threads):
 
     et = time.time()
     elapsed_time = et - st
-    print('Execution time in multiprocessing mode :', elapsed_time, 'seconds')
+    logger.info('Execution time in multiprocessing mode :', elapsed_time, 'seconds')
     # st = time.time()
     # seq1_d = dico_fasta.copy()
     # seq2_d = dico_fasta.copy()
@@ -268,7 +269,10 @@ def run_comparison( dico_fasta , similar_aa , threads):
     #   "seq1 identifier"
     #   "percentage of identity" where pid here is the number of correct match divide by the length of the shortest sequence.
     #   "number of gap"    
-    return data[0]
+    
+    
+        
+    return list(itertoolschain.from_iterable(data))
 
 
 
@@ -327,7 +331,9 @@ if __name__ == '__main__':
         logger.addHandler(
             log.file_handler(args.log,"INFO")
         )
-    
+        logger.addHandler(
+            log.stream_handler("INFO")
+        )
     else:
         logger.addHandler(
             log.stream_handler("INFO")
@@ -336,7 +342,7 @@ if __name__ == '__main__':
     file_fasta = args.infile
     matrix = args.matrice
     outdir = args.o
-    print(args.threads)
+    
     if isinstance(outdir,str):
         os.makedirs(outdir,exist_ok=True)
 
