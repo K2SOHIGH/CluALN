@@ -238,39 +238,7 @@ def run_comparison( dico_fasta , similar_aa , threads):
 
     et = time.time()
     elapsed_time = et - st
-    logger.info('Execution time in multiprocessing mode :', elapsed_time, 'seconds')
-    # st = time.time()
-    # seq1_d = dico_fasta.copy()
-    # seq2_d = dico_fasta.copy()
-    # data=[]
-    # for id1,seq1 in seq1_d.items():        
-    #     for id2,seq2 in seq2_d.items():
-    #         # _pairwise_comparison (compare each position between seq1 and seq2) - return match count, identity count and gap count as tuple                      
-    #         d = (id1,id2)
-    #         try:
-    #             metrics = _pairwise_comparison(seq1,seq2,similar_aa)
-    #             d += metrics                                            
-    #             data.append(d)
-    #         except ZeroDivisionError:
-    #             pass
-                
-    #     seq2_d.pop(id1, None)
-    # et = time.time()
-    # elapsed_time = et - st
-    # print('Execution time in sequential mode :', elapsed_time, 'seconds')
-    # data is a list of tuple with the following value for each comparison : 
-    #   "seq1 identifier"
-    #   "seq2 identifier"
-    #   "seq1 length"
-    #   "seq2 length"
-    #   "aln length"
-    #   "seq1 coverage"
-    #   "seq2 coverage"
-    #   "seq1 identifier"
-    #   "percentage of identity" where pid here is the number of correct match divide by the length of the shortest sequence.
-    #   "number of gap"    
-    
-    
+    logger.info('Execution time in multiprocessing mode : ' +  str(elapsed_time) +  ' seconds')
         
     return list(itertoolschain.from_iterable(data))
 
@@ -366,11 +334,30 @@ if __name__ == '__main__':
         pairwise_df_flat.columns="id1,id2,len_seq1,len_seq2,len_aln,match,identity_percent,identity_distance,similarity_percent,similarity_distance,coverage_1_2,coverage_2_1,gap_count".split(",")
         
         logger.info("Building matrices.")
+        logger.info("identity (%)...")
+        st = time.time()
         ipdf = make_matrix(pairwise_df_flat,"identity_percent")
+        et = time.time()    
+        elapsed_time = et - st        
+        logger.info("Done [ " +  str(elapsed_time) +  ' seconds ]')
+        logger.info("identity (distance) ... ")
+        st = time.time()
         iddf = make_matrix(pairwise_df_flat,"identity_distance")
+        et = time.time()    
+        elapsed_time = et - st        
+        logger.info("Done [ " +  str(elapsed_time) +  ' seconds ]')
+        logger.info("similarity (%)...")
+        st = time.time()
         spdf = make_matrix(pairwise_df_flat,"similarity_percent")
+        et = time.time()    
+        elapsed_time = et - st        
+        logger.info("Done [ " +  str(elapsed_time) +  ' seconds ]')
+        logger.info("similarity (distance)...")
+        st = time.time()
         sddf = make_matrix(pairwise_df_flat,"similarity_distance")
-        logger.info("Done.")
+        et = time.time()    
+        elapsed_time = et - st        
+        logger.info("Done [ " +  str(elapsed_time) +  ' seconds ]')
 
         ipdf.to_csv( generate_outfilename(outdir, "identity_percent")  ,sep="\t",header=True,index=True)        
         iddf.to_csv( generate_outfilename(outdir, "identity_distance"), sep="\t",header=True,index=True)        
