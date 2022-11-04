@@ -30,16 +30,20 @@ from scripts import snakeutils as su
 
 
 def additional_targets(wildcards):
-    MERGE_TARGET = [] 
+    TARGET = [] 
     if config ["merge"]:    
         """
             each cluster will be aligned and pairwise identity will be compute AND msaS will be merged.
         """
-        MERGE_TARGET = [
+        TARGET += [
             os.path.join(config['res_dir'],'merged','merge.done'),
             os.path.join(config['res_dir'],'representatives','rep.done')
         ]
-    return MERGE_TARGET
+    if config["per_cluster_msa"]:
+        TARGET.append(
+            os.path.join(config['res_dir'],'per_cluser','per_clu_msa.done'),
+        )
+    return TARGET
 
 rule all:
     """
@@ -48,8 +52,7 @@ rule all:
     output:
         os.path.join(config['res_dir'],'summary.txt')
     input:  
-        os.path.join(config['res_dir'],'clustering','clu.done'),
-        os.path.join(config['res_dir'],'per_cluser','per_clu_msa.done'),
+        os.path.join(config['res_dir'],'clustering','clu.done'),        
         additional_targets,
     params:
         resdir = config["res_dir"],

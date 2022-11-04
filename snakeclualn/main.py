@@ -43,6 +43,13 @@ def get_args():
     )
     
     parser.add_argument(
+        '-p',
+        '--per-cluster-msa',
+        action = "store_true",
+        help = "if set, each cluster will be aligned using mafft and pairwise matrices will be build"
+    )
+
+    parser.add_argument(
         '-m',
         '--merge',
         action = "store_true",
