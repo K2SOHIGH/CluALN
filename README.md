@@ -3,7 +3,7 @@
 Use mmseqs2 for sequence clustering. If --per-clu-msa is set, each cluster is aligned using mafft and MSAs produced are merged with mafft-merge utility. 
 
 
-<figure><img src="clualn.jpg"><figcaption>workflow</figcaption></figure>
+<figure><img src="clualnwf.jpg"><figcaption>workflow</figcaption></figure>
 
 # DEPENDENCIES :
     - snakemake
@@ -11,7 +11,7 @@ Use mmseqs2 for sequence clustering. If --per-clu-msa is set, each cluster is al
     - pandas
     
 # INPUT :
-    - directory with one or more fasta file, fast afile or yaml file with path to fasta file(s).
+    - a fasta file.
     
 # OUTPUT:
     -res_dir/<fasta_name>/clustering/tables/clusters.tsv 
@@ -20,7 +20,7 @@ Use mmseqs2 for sequence clustering. If --per-clu-msa is set, each cluster is al
 
 # INSTALLATION:
 ```bash
- git clone git@github.com:K2SOHIGH/ClusteringModule.git && cd ClusteringModule;
+ git clone git@github.com:K2SOHIGH/CluALN.git && cd CluALN;
  mamba create -n clualn python=3 && conda activate clualn;
  mamba install pyyaml snakemake pandas
  pip3 install . ;
