@@ -38,13 +38,13 @@ If --merge is set, then MSA from each cluster will be merged using [mafft-merge]
 
 ## INSTALLATION:
 ```bash
- mamba create -n clualn python=3 && conda activate clualn;
- mamba install pyyaml snakemake pandas
+ mamba create -n clualn python=3 && conda activate clualn ;
+ mamba install pyyaml snakemake pandas ;
  pip3 install git@github.com:K2SOHIGH/CluALN.git ;
 ```
 
 ## USAGE : 
-```bash
+```
 usage: clualn [-h] -i CLU_INPUT [-o RES_DIR] [-p] [-m] [-c COVERAGE] [--covmode {0,1,2,3}] [--clumode {0,1,2}] [--pid PID] [-v {0,1,2,3}] [-t THREADS] [--log LOG] [--snakargs SNAKARGS]
 
 Cluster sequences , perform MSA per cluster and merge MSA
