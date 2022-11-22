@@ -71,5 +71,5 @@ options:
 ```
 
 ### WORKFLOW :
-<figure><img src="clualnwf.jpg"><figcaption>workflow</figcaption></figure>
+<figure><img src="clualnwf.jpeg"><figcaption>workflow</figcaption></figure>
  
