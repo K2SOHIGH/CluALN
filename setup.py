@@ -4,7 +4,7 @@ setup(
     name='snakeclualn',
     version='0.1',
     description="""
-        cluster sequences with mmseqs and perform MSA per cluster before MSA merging. 
+        cluster sequences with mmseqs2 and more. 
     """,
     url='',
     author='Maxime Millet',
@@ -13,7 +13,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     entry_points = {
-        'console_scripts': ['clualn = snakeclualn.main:main'],
+        'console_scripts': ['clualn = snakeclualn.main:main']        
     },
     zip_safe=False
 )

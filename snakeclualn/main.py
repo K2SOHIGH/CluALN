@@ -2,6 +2,7 @@ import argparse
 import multiprocessing
 import sys
 import os
+import shutil
 import logging
 import yaml
 
@@ -151,8 +152,7 @@ def main():
         )
         
     logger.info("snakemake will install conda environment in %s" % cprefix)
-
-
+    
     CONFIG = {}
     
     for arg in vars(args):
