@@ -1,8 +1,8 @@
 # CluALN
 
-CluALN will use [mmseqs2](https://github.com/soedinglab/MMseqs2) to cluster sequences. 
-If --per-clu-msa is set, then each cluster will be aligned using [mafft](https://mafft.cbrc.jp/alignment/software/) and for each a distance matrix will be build.
-If --merge is set, then MSA from each cluster will be merged using [mafft-merge](https://mafft.cbrc.jp/alignment/software/merge.html). Representative sequences alignment will be extracted from this global MSA and distance matrices will be build for both of them.
+CluALN use [mmseqs2](https://github.com/soedinglab/MMseqs2) to cluster sequences. 
+If --per-clu-msa is set, then each cluster are aligned using [mafft](https://mafft.cbrc.jp/alignment/software/) and for each a distance matrix is produced.
+If --merge is set, then MSA from each cluster are merged using [mafft-merge](https://mafft.cbrc.jp/alignment/software/merge.html). Representative sequences alignment are extracted from this global MSA and distance matrices are built for both of them.
 
 
 
