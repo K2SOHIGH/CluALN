@@ -1,10 +1,8 @@
 # CluALN
 
 CluALN use [mmseqs2](https://github.com/soedinglab/MMseqs2) to cluster sequences. 
-If --per-clu-msa is set, then each cluster are aligned using [mafft](https://mafft.cbrc.jp/alignment/software/) and for each a distance matrix is produced.
-If --merge is set, then MSA from each cluster are merged using [mafft-merge](https://mafft.cbrc.jp/alignment/software/merge.html). Representative sequences alignment are extracted from this global MSA and distance matrices are built for both of them.
-
-
+If --per-clu-msa is set, then each cluster is aligned using [mafft](https://mafft.cbrc.jp/alignment/software/) and several distance matrices are produced.
+If --merge is set, then cluster's MSAs are merged using [mafft-merge](https://mafft.cbrc.jp/alignment/software/merge.html). Representative sequences alignment is extracted from this global MSA.
 
 ## DEPENDENCIES :
     - snakemake
@@ -69,7 +67,4 @@ options:
   --log LOG             logfile
   --snakargs SNAKARGS   snakmake arguments
 ```
-
-### WORKFLOW :
-<figure><img src="clualnwf.jpeg"><figcaption>workflow</figcaption></figure>
  
